@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Cell from "@/components/cell";
+import Cell from "@/components/Cell";
 import ThemeToggle from "@/components/ThemeToggle";
+import Semester from "@/components/Semester";
 
 export default function Home() {
   const [resetCount, setResetCount] = useState(0);
@@ -48,157 +49,32 @@ export default function Home() {
           <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Year 1</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Fall Semester */}
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                padding: 12,
-              }}
-            >
-              <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Fall Semester</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {/* so for each semester, i just repeated the cell component */}
-                <Cell />
-                <Cell />
-                <Cell />
-                <Cell />
-              </div>
-            </div>
-            {/* NOTE TO ADD -> add/subtract button to add another cell or delete a cell */}
-
-            {/* Spring Semester */}
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                padding: 12,
-              }}
-            >
-              <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Spring Semester</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Cell />
-                <Cell />
-                <Cell />
-                <Cell />
-              </div>
-            </div>
+            <Semester season="Fall" year={1} />
+            <Semester season="Spring" year={1} />
           </div>
 
           {/* Year 2 */}
           <div style={{ height: 16 }} />
           <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Year 2</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                padding: 12,
-              }}
-            >
-              <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Fall Semester</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Cell />
-                <Cell />
-                <Cell />
-                <Cell />
-              </div>
-            </div>
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                padding: 12,
-              }}
-            >
-              <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Spring Semester</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Cell />
-                <Cell />
-                <Cell />
-                <Cell />
-              </div>
-            </div>
+            <Semester season="Fall" year={2} />
+            <Semester season="Spring" year={2} />
           </div>
 
           {/* Year 3 */}
           <div style={{ height: 16 }} />
           <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Year 3</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                padding: 12,
-              }}
-            >
-              <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Fall Semester</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Cell />
-                <Cell />
-                <Cell />
-                <Cell />
-              </div>
-            </div>
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                padding: 12,
-              }}
-            >
-              <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Spring Semester</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Cell />
-                <Cell />
-                <Cell />
-                <Cell />
-              </div>
-            </div>
+            <Semester season="Fall" year={3} />
+            <Semester season="Spring" year={3} />
           </div>
 
           {/* Year 4 */}
           <div style={{ height: 16 }} />
           <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Year 4</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                padding: 12,
-              }}
-            >
-              <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Fall Semester</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Cell />
-                <Cell />
-                <Cell />
-                <Cell />
-              </div>
-            </div>
-            <div
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                padding: 12,
-              }}
-            >
-              <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Spring Semester</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <Cell />
-                <Cell />
-                <Cell />
-                <Cell />
-              </div>
-            </div>
+            <Semester season="Fall" year={4} />
+            <Semester season="Spring" year={4} />
           </div>
         </div>
       </main>
