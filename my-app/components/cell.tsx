@@ -33,39 +33,42 @@ export default function Cell() {
 				return () => document.removeEventListener("mousedown", handleClickOutside);
 			}, []);
 
-	// Example suggestions — replace or pass as props as needed.
+	// Dummy sample code, will change later into api fetch + json file
 	const courses = [
 		{
-			"code": "CMSC 201",
+			"code": "CMSC201",
 			"name": "Computer Science I",
 			"credits": 3
 		},
 		{
-			"code": "CMSC 202",
+			"code": "CMSC202",
 			"name": "Computer Science II",
 			"credits": 3
 		},
 		{
-			"code": "CMSC 203",
+			"code": "CMSC203",
 			"name": "Discrete Structures",
 			"credits": 3
 		},
 		{
-			"code": "MATH 151",
+			"code": "MATH151",
 			"name": "Calc. & Analytic Geom. I",
 			"credits": 3
 		}
 	];
-
-    
 
 	return (
 		<div>
 			<label htmlFor="course-input" className="sr-only">
 				Course
 			</label>
-			<div className="flex items-center">
-					<div ref={wrapperRef} className="relative inline-flex items-center">
+			{/* made some changes to fit all of the class name text */}
+			<div className="flex items-center" style={{ width: "100%" }}>
+					<div
+						ref={wrapperRef}
+						className="relative"
+						style={{ display: "flex", alignItems: "center", width: "100%" }}
+					>
 					<input
 						ref={inputRef}
 						id="course-input"
@@ -130,8 +133,16 @@ export default function Cell() {
 								}
 							}, 150);
 						}}
+						// style stuff changes
 						placeholder="Select or type a course"
-						className="border rounded-l px-2 py-1 w-48"
+						className="rounded-l px-2 py-1"
+						style={{
+							background: "var(--surface)",
+							color: "var(--foreground)",
+							border: "1px solid var(--border)",
+							flex: 1,
+							minWidth: 0,
+						}}
 						aria-haspopup="listbox"
 						aria-expanded={open}
 					/>
@@ -141,7 +152,14 @@ export default function Cell() {
 							setOpen((prev) => !prev);
 							if (!open) setHighlightedIndex(0);
 						}}
-						className="border rounded-r px-2 py-1"
+						// more style stuff changes
+						className="rounded-r px-2 py-1"
+						style={{
+							background: "var(--surface)",
+							color: "var(--foreground)",
+							border: "1px solid var(--border)",
+							borderLeft: "none",
+						}}
 						aria-label="Toggle course list"
 					>
 						{/* Simple arrow; replace with icon if desired */}
@@ -153,13 +171,21 @@ export default function Cell() {
 							<ul
 								ref={listRef}
 								role="listbox"
-								className="absolute left-0 top-full z-10 mt-1 max-h-48 w-48 overflow-auto rounded border bg-white p-1 shadow"
+								className="absolute top-full z-10 mt-1 max-h-48 overflow-auto rounded p-1 shadow"
+								style={{
+									background: "var(--surface)",
+									color: "var(--foreground)",
+									border: "1px solid var(--border)",
+									left: 0,
+									right: 0,
+									width: "100%",
+								}}
 								>
 							{(() => {
 								const filtered = courses.filter((c) => `${c.code} ${c.name}`.toLowerCase().includes(value.toLowerCase()));
 								if (filtered.length === 0) {
 									return (
-										<li className="px-2 py-1 text-gray-500">No matches</li>
+										<li className="px-2 py-1" style={{ color: "var(--muted)" }}>No matches</li>
 									);
 								}
 								return filtered.map((c, idx) => (
@@ -172,7 +198,10 @@ export default function Cell() {
 											setValue(`${c.code} ${c.name}`);
 											setOpen(false);
 										}}
-										className={`cursor-pointer rounded px-2 py-1 hover:bg-gray-100 ${highlightedIndex === idx ? 'bg-gray-200' : ''}`}
+										className={`cursor-pointer rounded px-2 py-1`}
+										style={{
+											background: highlightedIndex === idx ? "var(--active)" : "transparent",
+										}}
 									>
 										{c.code} {c.name}
 									</li>
