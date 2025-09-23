@@ -11,6 +11,10 @@ export default function Semester({ season, year }: { season: string; year: numbe
 		setCells((prev) => [...prev, (prev.at(-1) ?? -1) + 1]);
 	};
 
+	const deleteCourse = (cellId: number) => {
+		setCells((prev) => prev.filter((id) => id !== cellId));
+	};
+
 	return (
 		<div
 			style={{
@@ -25,7 +29,7 @@ export default function Semester({ season, year }: { season: string; year: numbe
 			</h3>
 			<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
 				{cells.map((id) => (
-					<Cell key={id} />
+					<Cell key={id} onDelete={() => deleteCourse(id)} />
 				))}
 			</div>
 			<div style={{ marginTop: 10 }}>

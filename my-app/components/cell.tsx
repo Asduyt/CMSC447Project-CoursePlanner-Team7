@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from "react";
 
 // Courses will be represented as one cell, which includes the code, name, and credits for the course.
 // This component renders a text input paired with a datalist to provide a dropdown of suggestions.
-export default function Cell() {
+export default function Cell({ onDelete }: { onDelete?: () => void }) {
 		const [value, setValue] = useState("");
 		const [open, setOpen] = useState(false);
 		const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -64,6 +64,30 @@ export default function Cell() {
 			</label>
 			{/* made some changes to fit all of the class name text */}
 			<div className="flex items-center" style={{ width: "100%" }}>
+					{/* Delete button */}
+					{onDelete && (
+						<button
+							type="button"
+							onClick={onDelete}
+							style={{
+								background: "transparent",
+								border: "none",
+								padding: "6px 8px",
+								cursor: "pointer",
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								fontSize: "14px",
+								lineHeight: 1,
+								color: "var(--foreground)",
+								marginRight: "4px",
+							}}
+							aria-label="Delete course"
+							title="Delete course"
+						>
+							×
+						</button>
+					)}
 					<div
 						ref={wrapperRef}
 						className="relative"
