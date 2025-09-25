@@ -1,0 +1,187 @@
+[
+  {
+    "code": "CMSC201",
+    "name": "Computer Science I",
+    "credits": 4
+  },
+  {
+    "code": "CMSC202",
+    "name": "Computer Science II",
+    "credits": 4
+  },
+  {
+    "code": "CMSC203",
+    "name": "Discrete Structures",
+    "credits": 3
+  },
+  {
+    "code": "CMSC304",
+    "name": "Ethical Issues in Information Technology",
+    "credits": 3
+  },
+  {
+    "code": "CMSC313",
+    "name": "Computer Organization and Assembly Language Programming",
+    "credits": 3
+  },
+  {
+    "code": "CMSC331",
+    "name": "Principles of Programming Languages",
+    "credits": 3
+  },
+  {
+    "code": "CMSC341",
+    "name": "Data Structures",
+    "credits": 3
+  },
+  {
+    "code": "CMSC447",
+    "name": "Software Engineering I",
+    "credits": 3
+  },
+  {
+    "code": "CMSC411",
+    "name": "Computer Architecture",
+    "credits": 3
+  },
+  {
+    "code": "CMSC421",
+    "name": "Principles of Operating Systems",
+    "credits": 3
+  },
+  {
+    "code": "CMSC441",
+    "name": "Algorithms",
+    "credits": 3
+  },
+  {
+    "code": "MATH151",
+    "name": "Calculus I",
+    "credits": 4
+  },
+  {
+    "code": "MATH152",
+    "name": "Calculus II",
+    "credits": 4
+  },
+  {
+    "code": "MATH221",
+    "name": "Introduction to Linear Algebra",
+    "credits": 3
+  },
+  {
+    "code": "STAT355",
+    "name": "Applied Statistics I",
+    "credits": 4
+  },
+  {
+    "code": "BIOL141",
+    "name": "Foundations of Biology: Cells, Energy and Organisms",
+    "credits": 4
+  },
+  {
+    "code": "BIOL142",
+    "name": "Foundations of Biology: Ecology and Evolution",
+    "credits": 4
+  },
+  {
+    "code": "CHEM101",
+    "name": "Principles of Chemistry I",
+    "credits": 4
+  },
+  {
+    "code": "CHEM102",
+    "name": "Principles of Chemistry II",
+    "credits": 4
+  },
+  {
+    "code": "PHYS121",
+    "name": "Introductory Physics I",
+    "credits": 4
+  },
+  {
+    "code": "PHYS122",
+    "name": "Introductory Physics II",
+    "credits": 4
+  },
+  {
+    "code": "SCI101L",
+    "name": "Science Lab",
+    "credits": 1
+  },
+  {
+    "code": "CHEM102L",
+    "name": "Chemistry II Lab",
+    "credits": 1
+  },
+  {
+    "code": "PHYS122L",
+    "name": "Physics II Lab",
+    "credits": 1
+  },
+  {
+    "code": "GES286",
+    "name": "Lab Science",
+    "credits": 1
+  },
+  {
+    "code": "CMSC426",
+    "name": "Principles of Computer Security",
+    "credits": 3
+  },
+  {
+    "code": "CMSC431",
+    "name": "Compiler Design Principles",
+    "credits": 3
+  },
+  {
+    "code": "CMSC435",
+    "name": "Computer Graphics",
+    "credits": 3
+  },
+  {
+    "code": "CMSC448",
+    "name": "Software Engineering II",
+    "credits": 3
+  },
+  {
+    "code": "CMSC451",
+    "name": "Automata Theory and Formal Languages",
+    "credits": 3
+  },
+  {
+    "code": "CMSC455",
+    "name": "Numerical Computations",
+    "credits": 3
+  },
+  {
+    "code": "CMSC456",
+    "name": "Symbolic Computation",
+    "credits": 3
+  },
+  {
+    "code": "CMSC461",
+    "name": "Database Management Systems",
+    "credits": 3
+  },
+  {
+    "code": "CMSC471",
+    "name": "Artificial Intelligence",
+    "credits": 3
+  },
+  {
+    "code": "CMSC481",
+    "name": "Computer Networks",
+    "credits": 3
+  },
+  {
+    "code": "CMSC483",
+    "name": "Parallel and Distributed Processing",
+    "credits": 3
+  },
+  {
+    "code": "CMSC400",
+    "name": "400-level Computer Science Elective",
+    "credits": 3
+  }
+]
