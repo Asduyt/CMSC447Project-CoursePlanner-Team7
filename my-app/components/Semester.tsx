@@ -65,6 +65,7 @@ export default function Semester({ season, year, onCreditsChange }: { season: st
 					/>
 				))}
 			</div>
+
 			<div style={{ marginTop: 10 }}>
 				<button
 					type="button"

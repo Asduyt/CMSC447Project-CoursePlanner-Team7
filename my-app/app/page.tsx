@@ -4,9 +4,18 @@ import { useMemo, useState } from "react";
 import Cell from "@/components/Cell";
 import ThemeToggle from "@/components/ThemeToggle";
 import Semester from "@/components/Semester";
+import TransferBox from "@/components/TransferBox";
 
 export default function Home() {
   const [resetCount, setResetCount] = useState(0);
+  const [showTransfers, setShowTransfers] = useState<number[]>([]);
+
+  const addGlobalTransfer = () => {
+    setShowTransfers((prev) => [...prev, (prev.at(-1) ?? -1) + 1]);
+  };
+  const removeGlobalTransfer = (id: number) => {
+    setShowTransfers((prev) => prev.filter((x) => x !== id));
+  };
   
   // track credits for each semester to help us show it
   const [y1Fall, setY1Fall] = useState(0);
@@ -44,6 +53,19 @@ export default function Home() {
           >
             Clear Schedule
           </button>
+              {/* Global Transfer button (adds a transfer box above Year 1) */}
+              <button
+                onClick={addGlobalTransfer}
+                style={{
+                  background: "var(--surface)",
+                  color: "var(--foreground)",
+                  border: "1px solid var(--border)",
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                }}
+              >
+                Add Transfer
+              </button>
         </div>
       </header>
       {/* all the semesters layout page */}
@@ -61,6 +83,16 @@ export default function Home() {
             maxWidth: 1000,
           }}
         >
+          {/* for now, i just copied and pasted and just changed the year, in the future i'll prob change this to be a loop */}
+          {/* Transfer Classes section (standalone above Year 1) */}
+          <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Transfer Classes</h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+            {showTransfers.map((id) => (
+              <TransferBox key={id} onDelete={() => removeGlobalTransfer(id)} />
+            ))}
+          </div>
+
+          <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Year 1</h2>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
             <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Year 1</h2>
             <div>Year credits: {y1}</div>
