@@ -1,18 +1,17 @@
 'use client'
 
-// Courses will be represented as one cell, which includes the code, name, and credits for the course. It will also store what requirements the course fulfills.
-
 import { useState, useRef, useEffect } from "react";
+import courses from "@/data/courses.json";
 
-// Courses will be represented as one cell, which includes the code, name, and credits for the course.
 // This component renders a text input paired with a datalist to provide a dropdown of suggestions.
-export default function Cell({ onDelete }: { onDelete?: () => void }) {
-		const [value, setValue] = useState("");
+export default function Cell({ onDelete, onChange }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void }) {
+	const [value, setValue] = useState("");
 		const [open, setOpen] = useState(false);
 		const wrapperRef = useRef<HTMLDivElement | null>(null);
 		const inputRef = useRef<HTMLInputElement | null>(null);
 		const listRef = useRef<HTMLUListElement | null>(null);
 		const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+	const [selected, setSelected] = useState<{ code: string; name: string; credits: number } | null>(null);
 
 		useEffect(() => {
 			if (listRef.current && highlightedIndex !== null) {
@@ -33,30 +32,7 @@ export default function Cell({ onDelete }: { onDelete?: () => void }) {
 				return () => document.removeEventListener("mousedown", handleClickOutside);
 			}, []);
 
-	// Dummy sample code, will change later into api fetch + json file
-	const courses = [
-		{
-			"code": "CMSC201",
-			"name": "Computer Science I",
-			"credits": 3
-		},
-		{
-			"code": "CMSC202",
-			"name": "Computer Science II",
-			"credits": 3
-		},
-		{
-			"code": "CMSC203",
-			"name": "Discrete Structures",
-			"credits": 3
-		},
-		{
-			"code": "MATH151",
-			"name": "Calc. & Analytic Geom. I",
-			"credits": 3
-		}
-	];
-
+	// moved json loading outside of component and into a new file
 	return (
 		<div>
 			<label htmlFor="course-input" className="sr-only">
@@ -68,7 +44,14 @@ export default function Cell({ onDelete }: { onDelete?: () => void }) {
 					{onDelete && (
 						<button
 							type="button"
-							onClick={onDelete}
+							onClick={() => {
+								// clear this cell and notify parent (because when we delete we need to reset)
+								setValue("");
+								setSelected(null);
+								setOpen(false);
+								onChange?.(null);
+								onDelete();
+							}}
 							style={{
 								background: "transparent",
 								border: "none",
@@ -100,6 +83,11 @@ export default function Cell({ onDelete }: { onDelete?: () => void }) {
 						onChange={(e) => {
 							setValue(e.target.value);
 							setHighlightedIndex(0);
+							// while typing, treat as not selected
+							if (selected) {
+								setSelected(null);
+								onChange?.(null);
+							}
 						}}
 						onClick={() => {
 							setOpen((prev) => !prev);
@@ -138,6 +126,8 @@ export default function Cell({ onDelete }: { onDelete?: () => void }) {
 									const chosen = filtered[highlightedIndex];
 									if (chosen) {
 										setValue(`${chosen.code} ${chosen.name}`);
+										setSelected(chosen);
+										onChange?.(chosen);
 									}
 									setOpen(false);
 								}
@@ -146,13 +136,15 @@ export default function Cell({ onDelete }: { onDelete?: () => void }) {
 							}
 						}}
 						onBlur={() => {
-							// Delay to allow click on list item (onMouseDown handles selection)
+							// delay to allow click on list item 
 							setTimeout(() => {
 								if (!open) {
 									// if closed, validate current value
 									const validStrings = courses.map((c) => `${c.code} ${c.name}`);
 									if (!validStrings.includes(value)) {
 										setValue("");
+										setSelected(null);
+										onChange?.(null);
 									}
 								}
 							}, 150);
@@ -186,11 +178,23 @@ export default function Cell({ onDelete }: { onDelete?: () => void }) {
 						}}
 						aria-label="Toggle course list"
 					>
-						{/* Simple arrow; replace with icon if desired */}
 						<span className={`inline-block transform ${open ? "rotate-180" : "rotate-0"}`}>
 							▾
 						</span>
 					</button>
+					{/* credits display */}
+					<div
+						style={{
+							minWidth: 60,
+							textAlign: "right",
+							paddingLeft: 8,
+							color: "var(--foreground)",
+							fontSize: 14,
+						}}
+						aria-label="Selected course credits"
+					>
+						{selected ? `${selected.credits} cr` : ""}
+					</div>
 					{open && (
 							<ul
 								ref={listRef}
@@ -220,6 +224,8 @@ export default function Cell({ onDelete }: { onDelete?: () => void }) {
 											// onMouseDown so the input doesn't lose focus before click
 											e.preventDefault();
 											setValue(`${c.code} ${c.name}`);
+											setSelected(c);
+											onChange?.(c);
 											setOpen(false);
 										}}
 										className={`cursor-pointer rounded px-2 py-1`}
