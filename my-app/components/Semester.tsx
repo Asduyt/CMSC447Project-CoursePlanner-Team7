@@ -32,6 +32,7 @@ export default function Semester({ season, year }: { season: string; year: numbe
 					<Cell key={id} onDelete={() => deleteCourse(id)} />
 				))}
 			</div>
+
 			<div style={{ marginTop: 10 }}>
 				<button
 					type="button"
