@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Cell from "./Cell";
 
-export default function Semester({ season, year, onCreditsChange }: { season: string; year: number; onCreditsChange?: (total: number) => void }) {
+export default function Semester({ season, year, onCreditsChange, onDelete }: { season: string; year: number; onCreditsChange?: (total: number) => void; onDelete?: () => void }) {
 	// Start with 4 cells, allow adding more dynamically
 	const [cells, setCells] = useState<number[]>([0, 1, 2, 3]);
 	// track credits for each cell by id
@@ -39,6 +39,9 @@ export default function Semester({ season, year, onCreditsChange }: { season: st
 		onCreditsChange?.(total);
 	}, [total, onCreditsChange]);
 
+	// Check if this is a Winter or Summer semester
+	const isOptionalSemester = season === "Winter" || season === "Summer";
+
 	return (
 		<div
 			style={{
@@ -46,6 +49,7 @@ export default function Semester({ season, year, onCreditsChange }: { season: st
 				border: "1px solid var(--border)",
 				borderRadius: 8,
 				padding: 12,
+				position: "relative",
 			}}
 		>
 			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
@@ -82,6 +86,26 @@ export default function Semester({ season, year, onCreditsChange }: { season: st
 					+ Add Course
 				</button>
 			</div>
+
+			{/* Show delete button only for Winter/Summer semesters */}
+			{isOptionalSemester && onDelete && (
+				<button
+					onClick={onDelete}
+					style={{
+						position: 'absolute',
+						bottom: 8,
+						right: 8,
+						background: "var(--surface)",
+						color: "var(--foreground)",
+						border: "1px solid var(--border)",
+						padding: "6px 10px",
+						borderRadius: 6,
+						cursor: "pointer",
+					}}
+				>
+					Delete Semester
+				</button>
+			)}
 		</div>
 	);
 }
