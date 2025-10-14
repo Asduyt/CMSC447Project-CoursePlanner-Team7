@@ -1,21 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import Cell from "./Cell";
 
 export default function TransferBox({ onDelete }: { onDelete?: () => void }) {
-  // Each transfer row stores its own id and selected target university
-  const [rows, setRows] = useState<{ id: number; transferTo: string }[]>([
-    { id: 0, transferTo: "" },
-    { id: 1, transferTo: "" },
+  // Each transfer row stores its own id, selected target university, and the typed course name
+  const [rows, setRows] = useState<{ id: number; transferTo: string; course: string; credits: string }[]>([
+    { id: 0, transferTo: "", course: "", credits: "" },
+    { id: 1, transferTo: "", course: "", credits: "" },
   ]);
 
-  const addCourse = () => setRows((prev) => [...prev, { id: (prev.at(-1)?.id ?? -1) + 1, transferTo: "" }]);
+  const addCourse = () =>
+    setRows((prev) => [...prev, { id: (prev.at(-1)?.id ?? -1) + 1, transferTo: "", course: "", credits: "" }]);
+
   const deleteCourse = (id: number) => setRows((prev) => prev.filter((x) => x.id !== id));
 
   const setTransferTarget = (id: number, value: string) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, transferTo: value } : r)));
   };
+
+  const setCourseValue = (id: number, value: string) =>
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, course: value } : r)));
+
+  const setCreditsValue = (id: number, value: string) =>
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, credits: value } : r)));
 
   const universities = ["UMBC", "Towson University", "Johns Hopkins University", "Community College", "Other"];
 
@@ -74,11 +81,67 @@ export default function TransferBox({ onDelete }: { onDelete?: () => void }) {
               </select>
             </div>
 
-            {/* Course input on the right (matches other course boxes) */}
+            {/* Course input on the right (plain text input for transfer courses) */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              {/* adjust marginLeft so the label lines up with the input start (accounts for Cell's delete button) */}
-              <label style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4, marginLeft: 36 }}>Course to transfer</label>
-              <Cell onDelete={() => deleteCourse(row.id)} />
+              {/* adjust marginLeft so the label lines up with the input start (accounts for delete button space) */}
+              <label style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4, marginLeft: 36 }}>
+                Course to transfer
+              </label>
+              <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                <input
+                  type="text"
+                  placeholder="Type course name"
+                  value={row.course}
+                  onChange={(e) => setCourseValue(row.id, e.target.value)}
+                  style={{
+                    background: "var(--surface)",
+                    color: "var(--foreground)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    padding: "6px 8px",
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                />
+
+                {/* credits input: small numeric field */}
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  placeholder="Cr"
+                  value={row.credits}
+                  onChange={(e) => setCreditsValue(row.id, e.target.value)}
+                  style={{
+                    width: 64,
+                    marginLeft: 8,
+                    background: "var(--surface)",
+                    color: "var(--foreground)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    padding: "6px 8px",
+                    textAlign: "center",
+                  }}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => deleteCourse(row.id)}
+                  aria-label="Delete transfer row"
+                  title="Delete row"
+                  style={{
+                    marginLeft: 8,
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 18,
+                    lineHeight: 1,
+                    color: "var(--foreground)",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             </div>
           </div>
         ))}
