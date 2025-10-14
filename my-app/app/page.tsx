@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Cell from "@/components/Cell";
+import Cell from "@/components/cell";
 import ThemeToggle from "@/components/ThemeToggle";
 import Semester from "@/components/Semester";
 import TransferBox from "@/components/TransferBox";

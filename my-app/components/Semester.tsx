@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Cell from "./Cell";
+import Cell from "./cell";
 
 export default function Semester({ season, year, onCreditsChange, onDelete }: { season: string; year: number; onCreditsChange?: (total: number) => void; onDelete?: () => void }) {
 	// Start with 4 cells, allow adding more dynamically
