@@ -26,6 +26,9 @@ export default function Home() {
   const removeGlobalTransfer = (id: number) => {
     setShowTransfers((prev) => prev.filter((x) => x !== id));
   };
+  // track credits for transfer boxes by id
+  const [transferCredits, setTransferCredits] = useState<Record<number, number>>({});
+  const totalTransferCredits = useMemo(() => Object.values(transferCredits).reduce((a, b) => a + b, 0), [transferCredits]);
   
   const addSemester = () => {
     const key = `${newSemesterType.toLowerCase()}_${newSemesterYear}`;
@@ -56,7 +59,7 @@ export default function Home() {
   const y2 = y2Fall + y2Spring;
   const y3 = y3Fall + y3Spring;
   const y4 = y4Fall + y4Spring;
-  const total = y1 + y2 + y3 + y4;
+  const total = y1 + y2 + y3 + y4 + totalTransferCredits;
   
   return (
     // the main page layout
@@ -126,11 +129,24 @@ export default function Home() {
           }}
         >
           {/* for now, i just copied and pasted and just changed the year, in the future i'll prob change this to be a loop */}
-          {/* Transfer Classes section (standalone above Year 1) */}
           <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Transfer Classes</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
             {showTransfers.map((id) => (
-              <TransferBox key={id} onDelete={() => removeGlobalTransfer(id)} />
+              <TransferBox
+                key={id}
+                onDelete={() => {
+                  {/* new section for the credits */}
+                  setTransferCredits((prev) => {
+                    const copy = { ...prev };
+                    delete copy[id];
+                    return copy;
+                  });
+                  removeGlobalTransfer(id);
+                }}
+                onCreditsChange={(t) =>
+                  setTransferCredits((prev) => (prev[id] === t ? prev : { ...prev, [id]: t }))
+                }
+              />
             ))}
           </div>
 
