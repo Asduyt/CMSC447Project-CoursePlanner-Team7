@@ -129,7 +129,6 @@ export default function Home() {
           }}
         >
           {/* for now, i just copied and pasted and just changed the year, in the future i'll prob change this to be a loop */}
-          <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Transfer Classes</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
             {showTransfers.map((id) => (
               <TransferBox
