@@ -11,6 +11,7 @@ type YearProps = {
   onRemoveSummer?: () => void;
   onFallCreditsChange: (n: number) => void;
   onSpringCreditsChange: (n: number) => void;
+  onCourseChange?: (prevCode: string | null, nextCode: string | null) => void;
 };
 
 export default function Year({
@@ -22,6 +23,7 @@ export default function Year({
   onRemoveSummer,
   onFallCreditsChange,
   onSpringCreditsChange,
+  onCourseChange,
 }: YearProps) {
   return (
     <div>
@@ -31,13 +33,13 @@ export default function Year({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Semester season="Fall" year={year} onCreditsChange={onFallCreditsChange} />
+        <Semester season="Fall" year={year} onCreditsChange={onFallCreditsChange} onCourseChange={onCourseChange} />
         {hasWinter && (
-          <Semester season="Winter" year={year} onCreditsChange={() => {}} onDelete={onRemoveWinter} />
+          <Semester season="Winter" year={year} onCreditsChange={() => {}} onDelete={onRemoveWinter} onCourseChange={onCourseChange} />
         )}
-        <Semester season="Spring" year={year} onCreditsChange={onSpringCreditsChange} />
+        <Semester season="Spring" year={year} onCreditsChange={onSpringCreditsChange} onCourseChange={onCourseChange} />
         {hasSummer && (
-          <Semester season="Summer" year={year} onCreditsChange={() => {}} onDelete={onRemoveSummer} />
+          <Semester season="Summer" year={year} onCreditsChange={() => {}} onDelete={onRemoveSummer} onCourseChange={onCourseChange} />
         )}
       </div>
     </div>

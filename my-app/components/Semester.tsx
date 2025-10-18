@@ -3,11 +3,26 @@
 import { useEffect, useMemo, useState } from "react";
 import Cell from "./cell";
 
-export default function Semester({ season, year, onCreditsChange, onDelete }: { season: string; year: number; onCreditsChange?: (total: number) => void; onDelete?: () => void }) {
+export default function Semester({ season, year, onCreditsChange, onDelete, onCourseChange }: { season: string; year: number; onCreditsChange?: (total: number) => void; onDelete?: () => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void }) {
 	// Start with 4 cells, allow adding more dynamically
 	const [cells, setCells] = useState<number[]>([0, 1, 2, 3]);
 	// track credits for each cell by id
 	const [credits, setCredits] = useState<Record<number, number | null>>({ 0: null, 1: null, 2: null, 3: null });
+	// track selected course code per cell
+	const [codes, setCodes] = useState<Record<number, string | null>>({ 0: null, 1: null, 2: null, 3: null });
+
+	// On unmount, notify parent to decrement any selected codes in this semester
+	useEffect(() => {
+		return () => {
+			if (onCourseChange) {
+				Object.values(codes).forEach((code) => {
+					if (code) onCourseChange(code, null);
+				});
+			}
+		};
+	// it's okay to depend on codes to capture latest selections; this effect only runs cleanup on unmount
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	// function to add a new course cell
 	const addCourse = () => {
@@ -23,6 +38,15 @@ export default function Semester({ season, year, onCreditsChange, onDelete }: { 
 	const deleteCourse = (cellId: number) => {
 		setCells((prev) => prev.filter((id) => id !== cellId));
 		setCredits((c) => {
+			const copy = { ...c };
+			delete copy[cellId];
+			return copy;
+		});
+		setCodes((c) => {
+			const prevCode = c[cellId] ?? null;
+			if (prevCode) {
+				onCourseChange?.(prevCode, null);
+			}
 			const copy = { ...c };
 			delete copy[cellId];
 			return copy;
@@ -60,11 +84,19 @@ export default function Semester({ season, year, onCreditsChange, onDelete }: { 
 			</div>
 			<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
 				{cells.map((id, index) => (
-					<Cell
+						<Cell
 						key={id}
 						onDelete={() => deleteCourse(id)}
 						onChange={(course) => {
-							setCredits((c) => ({ ...c, [id]: course?.credits ?? null }));
+								setCredits((c) => ({ ...c, [id]: course?.credits ?? null }));
+								setCodes((prev) => {
+									const prevCode = prev[id] ?? null;
+									const nextCode = course?.code ?? null;
+									if (prevCode !== nextCode) {
+										onCourseChange?.(prevCode, nextCode);
+									}
+									return { ...prev, [id]: nextCode };
+								});
 						}}
 					/>
 				))}

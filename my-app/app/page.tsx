@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import Year from "@/components/Year";
 import TransferBox from "@/components/TransferBox";
+import RequirementsSidebar from "@/components/RequirementsSidebar";
 
 export default function Home() {
   const [resetCount, setResetCount] = useState(0);
@@ -59,6 +60,26 @@ export default function Home() {
   const y3 = y3Fall + y3Spring;
   const y4 = y4Fall + y4Spring;
   const total = y1 + y2 + y3 + y4 + totalTransferCredits;
+  
+  // Track selected course codes across all semesters to drive requirements sidebar
+  const [selectedCodes, setSelectedCodes] = useState<Map<string, number>>(new Map());
+
+  const handleCourseChange = (prevCode: string | null, nextCode: string | null) => {
+    setSelectedCodes((prev) => {
+      const map = new Map(prev);
+      const norm = (s: string) => s.replace(/\s+/g, "").toUpperCase();
+      if (prevCode) {
+        const p = norm(prevCode);
+        const count = (map.get(p) ?? 0) - 1;
+        if (count <= 0) map.delete(p); else map.set(p, count);
+      }
+      if (nextCode) {
+        const n = norm(nextCode);
+        map.set(n, (map.get(n) ?? 0) + 1);
+      }
+      return map;
+    });
+  };
   
   // Arrays to map Year components
   const years = [1, 2, 3, 4] as const;
@@ -131,19 +152,20 @@ export default function Home() {
       </header>
       {/* all the semesters layout page */}
       {/* NEED TO ADD -> option to add winter/summer semesters */}
-      <main className="row-start-2 w-full flex justify-center">
-        <div
-          key={resetCount}
-          style={{
-            background: "var(--surface)",
-            color: "var(--foreground)",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            padding: 16,
-            width: "100%",
-            maxWidth: 1000,
-          }}
-        >
+      <main className="row-start-2 w-full" style={{ display: "flex", justifyContent: "center" }}>
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start", width: "100%", maxWidth: 1400 }}>
+          <div
+            key={resetCount}
+            style={{
+              background: "var(--surface)",
+              color: "var(--foreground)",
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              padding: 16,
+              width: "100%",
+              maxWidth: 1000,
+            }}
+          >
           {/* for now, i just copied and pasted and just changed the year, in the future i'll prob change this to be a loop */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
             {showTransfers.map((id) => (
@@ -177,6 +199,7 @@ export default function Home() {
                 hasSummer={!!additionalSemesters[`summer_${yr}`]}
                 onRemoveWinter={() => removeSemester("Winter", yr)}
                 onRemoveSummer={() => removeSemester("Summer", yr)}
+                onCourseChange={handleCourseChange}
               />
             </div>
           ))}
@@ -185,6 +208,8 @@ export default function Home() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontWeight: 600 }}>Total credits overall: {total}</div>
           </div>
+          </div>
+          <RequirementsSidebar completedSet={new Set(selectedCodes.keys())} />
         </div>
       </main>
       
