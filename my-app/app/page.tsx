@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Cell from "@/components/cell";
 import ThemeToggle from "@/components/ThemeToggle";
-import Semester from "@/components/Semester";
+import Year from "@/components/Year";
 import TransferBox from "@/components/TransferBox";
 
 export default function Home() {
@@ -61,6 +60,22 @@ export default function Home() {
   const y4 = y4Fall + y4Spring;
   const total = y1 + y2 + y3 + y4 + totalTransferCredits;
   
+  // Arrays to map Year components
+  const years = [1, 2, 3, 4] as const;
+  const yearTotals: Record<number, number> = { 1: y1, 2: y2, 3: y3, 4: y4 };
+  const fallSetters: Record<number, (n: number) => void> = {
+    1: setY1Fall,
+    2: setY2Fall,
+    3: setY3Fall,
+    4: setY4Fall,
+  };
+  const springSetters: Record<number, (n: number) => void> = {
+    1: setY1Spring,
+    2: setY2Spring,
+    3: setY3Spring,
+    4: setY4Spring,
+  };
+  
   return (
     // the main page layout
     <div className="font-sans grid grid-rows-[auto_1fr_auto] items-center justify-items-center min-h-screen p-8 pb-20 gap-8 sm:p-20">
@@ -77,6 +92,7 @@ export default function Home() {
               border: "1px solid var(--border)",
               padding: "6px 10px",
               borderRadius: 6,
+              cursor: "pointer",
             }}
           >
             Clear Schedule
@@ -149,72 +165,21 @@ export default function Home() {
             ))}
           </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Year 1</h2>
-            <div>Year credits: {y1}</div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Semester season="Fall" year={1} onCreditsChange={setY1Fall} />
-            {additionalSemesters[`winter_1`] && (
-              <Semester season="Winter" year={1} onCreditsChange={() => {}} onDelete={() => removeSemester("Winter", 1)} />
-            )}
-            <Semester season="Spring" year={1} onCreditsChange={setY1Spring} />
-            {additionalSemesters[`summer_1`] && (
-              <Semester season="Summer" year={1} onCreditsChange={() => {}} onDelete={() => removeSemester("Summer", 1)} />
-            )}
-          </div>
-
-          {/* Year 2 */}
-          <div style={{ height: 16 }} />
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Year 2</h2>
-            <div>Year credits: {y2}</div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Semester season="Fall" year={2} onCreditsChange={setY2Fall} />
-            {additionalSemesters[`winter_2`] && (
-              <Semester season="Winter" year={2} onCreditsChange={() => {}} onDelete={() => removeSemester("Winter", 2)} />
-            )}
-            <Semester season="Spring" year={2} onCreditsChange={setY2Spring} />
-            {additionalSemesters[`summer_2`] && (
-              <Semester season="Summer" year={2} onCreditsChange={() => {}} onDelete={() => removeSemester("Summer", 2)} />
-            )}
-          </div>
-
-          {/* Year 3 */}
-          <div style={{ height: 16 }} />
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Year 3</h2>
-            <div>Year credits: {y3}</div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Semester season="Fall" year={3} onCreditsChange={setY3Fall} />
-            {additionalSemesters[`winter_3`] && (
-              <Semester season="Winter" year={3} onCreditsChange={() => {}} onDelete={() => removeSemester("Winter", 3)} />
-            )}
-            <Semester season="Spring" year={3} onCreditsChange={setY3Spring} />
-            {additionalSemesters[`summer_3`] && (
-              <Semester season="Summer" year={3} onCreditsChange={() => {}} onDelete={() => removeSemester("Summer", 3)} />
-            )}
-          </div>
-
-          {/* Year 4 */}
-          <div style={{ height: 16 }} />
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-            <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}>Year 4</h2>
-            <div>Year credits: {y4}</div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Semester season="Fall" year={4} onCreditsChange={setY4Fall} />
-            {additionalSemesters[`winter_4`] && (
-              <Semester season="Winter" year={4} onCreditsChange={() => {}} onDelete={() => removeSemester("Winter", 4)} />
-            )}
-            <Semester season="Spring" year={4} onCreditsChange={setY4Spring} />
-            {additionalSemesters[`summer_4`] && (
-              <Semester season="Summer" year={4} onCreditsChange={() => {}} onDelete={() => removeSemester("Summer", 4)} />
-            )}
-          </div>
+          {years.map((yr, idx) => (
+            <div key={yr}>
+              {idx > 0 && <div style={{ height: 16 }} />}
+              <Year
+                year={yr}
+                yearCredits={yearTotals[yr]}
+                onFallCreditsChange={fallSetters[yr]}
+                onSpringCreditsChange={springSetters[yr]}
+                hasWinter={!!additionalSemesters[`winter_${yr}`]}
+                hasSummer={!!additionalSemesters[`summer_${yr}`]}
+                onRemoveWinter={() => removeSemester("Winter", yr)}
+                onRemoveSummer={() => removeSemester("Summer", yr)}
+              />
+            </div>
+          ))}
 
           <div style={{ height: 16 }} />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

@@ -175,6 +175,7 @@ export default function Cell({ onDelete, onChange }: { onDelete?: () => void; on
 							color: "var(--foreground)",
 							border: "1px solid var(--border)",
 							borderLeft: "none",
+							cursor: "pointer"
 						}}
 						aria-label="Toggle course list"
 					>
