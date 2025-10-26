@@ -2,186 +2,223 @@
   {
     "code": "CMSC201",
     "name": "Computer Science I",
-    "credits": 4
+    "credits": 4,
+    "requirements": ["CMSC Gateway", "120 Academic Credits", "Computer Science"]
   },
   {
     "code": "CMSC202",
     "name": "Computer Science II",
-    "credits": 4
+    "credits": 4,
+    "requirements": ["CMSC Gateway", "120 Academic Credits", "Computer Science"]
   },
   {
     "code": "CMSC203",
     "name": "Discrete Structures",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["CMSC Gateway", "120 Academic Credits", "Computer Science"]
   },
   {
     "code": "CMSC304",
     "name": "Ethical Issues in Information Technology",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["Computer Science", "120 Academic Credits", "45 upper level credits", "Arts and Humanities", "Writing Intensive"]
   },
   {
     "code": "CMSC313",
     "name": "Computer Organization and Assembly Language Programming",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["Computer Science", "120 Academic Credits", "45 upper level credits"]
   },
   {
     "code": "CMSC331",
     "name": "Principles of Programming Languages",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["Computer Science", "120 Academic Credits", "45 upper level credits"]
   },
   {
     "code": "CMSC341",
     "name": "Data Structures",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["Computer Science", "120 Academic Credits", "45 upper level credits"]
   },
   {
     "code": "CMSC447",
     "name": "Software Engineering I",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "Computer Science 400 Level Core Course", "45 upper level credits"]
   },
   {
     "code": "CMSC411",
     "name": "Computer Architecture",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["Required CS", "120 Academic Credits", "Computer Science 400 Level Core Course", "45 upper level credits"]
   },
   {
     "code": "CMSC421",
     "name": "Principles of Operating Systems",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["Required CS", "120 Academic Credits", "Computer Science 400 Level Core Course", "45 upper level credits"]
   },
   {
     "code": "CMSC441",
     "name": "Algorithms",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["Required CS", "120 Academic Credits", "Computer Science 400 Level Core Course", "45 upper level credits"]
   },
   {
     "code": "MATH151",
     "name": "Calculus I",
-    "credits": 4
+    "credits": 4,
+    "requirements": ["Computer Science Math", "120 Academic Credits"]
   },
   {
     "code": "MATH152",
     "name": "Calculus II",
-    "credits": 4
+    "credits": 4,
+    "requirements": ["Computer Science Math", "120 Academic Credits"]
   },
   {
     "code": "MATH221",
     "name": "Introduction to Linear Algebra",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["Computer Science Math", "120 Academic Credits"]
   },
   {
     "code": "STAT355",
     "name": "Applied Statistics I",
-    "credits": 4
+    "credits": 4,
+    "requirements": ["Statistics", "120 Academic Credits", "45 upper level credits"]
   },
   {
     "code": "BIOL141",
     "name": "Foundations of Biology: Cells, Energy and Organisms",
-    "credits": 4
+    "credits": 4,
+    "requirements": ["Science", "120 Academic Credits"]
   },
   {
     "code": "BIOL142",
     "name": "Foundations of Biology: Ecology and Evolution",
-    "credits": 4
+    "credits": 4,
+    "requirements": ["Science", "120 Academic Credits"]
   },
   {
     "code": "CHEM101",
     "name": "Principles of Chemistry I",
-    "credits": 4
+    "credits": 4,
+    "requirements": ["Science", "120 Academic Credits"]
   },
   {
     "code": "CHEM102",
     "name": "Principles of Chemistry II",
-    "credits": 4
+    "credits": 4,
+    "requirements": ["Science", "120 Academic Credits"]
   },
   {
     "code": "PHYS121",
     "name": "Introductory Physics I",
-    "credits": 4
+    "credits": 4,
+    "requirements": ["Science", "120 Academic Credits"]
   },
   {
     "code": "PHYS122",
     "name": "Introductory Physics II",
-    "credits": 4
+    "credits": 4,
+    "requirements": ["Science", "120 Academic Credits"]
   },
   {
     "code": "SCI101L",
     "name": "Science Lab",
-    "credits": 1
+    "credits": 1,
+    "requirements": ["Science Lab", "120 Academic Credits"]
   },
   {
     "code": "CHEM102L",
     "name": "Chemistry II Lab",
-    "credits": 1
+    "credits": 1,
+    "requirements": ["Science Lab", "120 Academic Credits"]
   },
   {
     "code": "PHYS122L",
     "name": "Physics II Lab",
-    "credits": 1
+    "credits": 1,
+    "requirements": ["Science Lab", "120 Academic Credits"]
   },
   {
     "code": "GES286",
     "name": "Lab Science",
-    "credits": 1
+    "credits": 1,
+    "requirements": ["Science Lab", "120 Academic Credits"]
   },
   {
     "code": "CMSC426",
     "name": "Principles of Computer Security",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
     "code": "CMSC431",
     "name": "Compiler Design Principles",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
     "code": "CMSC435",
     "name": "Computer Graphics",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
     "code": "CMSC448",
     "name": "Software Engineering II",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
     "code": "CMSC451",
     "name": "Automata Theory and Formal Languages",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
     "code": "CMSC455",
     "name": "Numerical Computations",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
     "code": "CMSC456",
     "name": "Symbolic Computation",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
     "code": "CMSC461",
     "name": "Database Management Systems",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
     "code": "CMSC471",
     "name": "Artificial Intelligence",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
     "code": "CMSC481",
     "name": "Computer Networks",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
     "code": "CMSC483",
     "name": "Parallel and Distributed Processing",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
     "code": "CMSC400",
     "name": "400-level Computer Science Elective",
-    "credits": 3
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Technical Electives"]
   }
 ]
