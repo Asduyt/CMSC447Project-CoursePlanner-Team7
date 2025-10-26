@@ -14,11 +14,13 @@ export default function Cell({ onDelete, onChange }: { onDelete?: () => void; on
 	const [selected, setSelected] = useState<{ code: string; name: string; credits: number } | null>(null);
 
 		useEffect(() => {
-			if (listRef.current && highlightedIndex !== null) {
-				const el = listRef.current.children[highlightedIndex] as HTMLElement | undefined;
-				if (el) el.scrollIntoView({ block: 'nearest' });
-			}
-		}, [highlightedIndex]);
+				if (listRef.current && highlightedIndex !== null) {
+					// We render a blank option at the top, so shift index by +1 for real items.
+					const indexInChildren = highlightedIndex >= 0 ? highlightedIndex + 1 : 0;
+					const el = listRef.current.children[indexInChildren] as HTMLElement | undefined;
+					if (el) el.scrollIntoView({ block: 'nearest' });
+				}
+			}, [highlightedIndex]);
 
 			useEffect(() => {
 				function handleClickOutside(e: MouseEvent) {
@@ -175,6 +177,7 @@ export default function Cell({ onDelete, onChange }: { onDelete?: () => void; on
 							color: "var(--foreground)",
 							border: "1px solid var(--border)",
 							borderLeft: "none",
+							cursor: "pointer"
 						}}
 						aria-label="Toggle course list"
 					>
@@ -210,32 +213,66 @@ export default function Cell({ onDelete, onChange }: { onDelete?: () => void; on
 								}}
 								>
 							{(() => {
-								const filtered = courses.filter((c) => `${c.code} ${c.name}`.toLowerCase().includes(value.toLowerCase()));
-								if (filtered.length === 0) {
-									return (
-										<li className="px-2 py-1" style={{ color: "var(--muted)" }}>No matches</li>
+									const filtered = courses.filter((c) => `${c.code} ${c.name}`.toLowerCase().includes(value.toLowerCase()));
+									const items = [] as any[];
+
+									// Blank option at the top
+									items.push(
+										<li
+											key="__none"
+											role="option"
+											onMouseEnter={() => setHighlightedIndex(-1)}
+											onMouseDown={(e) => {
+												e.preventDefault();
+												setValue("");
+												setSelected(null);
+												onChange?.(null);
+												setOpen(false);
+											}}
+											className="cursor-pointer rounded px-2 py-1"
+											style={{
+												background: highlightedIndex === -1 ? "var(--active)" : "transparent",
+												opacity: 0.9,
+												fontStyle: "italic",
+											}}
+										>
+											Select or type a course
+										</li>
 									);
-								}
-								return filtered.map((c, idx) => (
-									<li
-										key={c.code}
-										role="option"
-										onMouseDown={(e) => {
-											// onMouseDown so the input doesn't lose focus before click
-											e.preventDefault();
-											setValue(`${c.code} ${c.name}`);
-											setSelected(c);
-											onChange?.(c);
-											setOpen(false);
-										}}
-										className={`cursor-pointer rounded px-2 py-1`}
-										style={{
-											background: highlightedIndex === idx ? "var(--active)" : "transparent",
-										}}
-									>
-										{c.code} {c.name}
-									</li>
-									));
+
+									if (filtered.length === 0) {
+										items.push(
+											<li key="__no_matches" className="px-2 py-1" style={{ color: "var(--muted)" }}>
+												No matches
+											</li>
+										);
+									} else {
+										items.push(
+											...filtered.map((c, idx) => (
+												<li
+													key={c.code}
+													role="option"
+													onMouseEnter={() => setHighlightedIndex(idx)}
+													onMouseDown={(e) => {
+														// onMouseDown so the input doesn't lose focus before click
+														e.preventDefault();
+														setValue(`${c.code} ${c.name}`);
+														setSelected(c);
+														onChange?.(c);
+														setOpen(false);
+													}}
+													className={`cursor-pointer rounded px-2 py-1`}
+													style={{
+														background: highlightedIndex === idx ? "var(--active)" : "transparent",
+													}}
+												>
+													{c.code} {c.name}
+												</li>
+											))
+										);
+									}
+
+									return items;
 							})()}
 						</ul>
 					)}

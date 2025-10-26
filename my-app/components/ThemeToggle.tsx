@@ -56,6 +56,7 @@ export default function ThemeToggle() {
           border: "1px solid var(--border)",
           padding: "4px 8px",
           borderRadius: 6,
+          cursor: "pointer"
         }}
       >
         <option value="system">System</option>
