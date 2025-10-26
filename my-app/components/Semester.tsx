@@ -42,30 +42,24 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 			delete copy[cellId];
 			return copy;
 		});
+		// Read previous code before updating local state, then notify parent after local updates
+		const prevCode = codes[cellId] ?? null;
 		setCodes((c) => {
-			const prevCode = c[cellId] ?? null;
-			if (prevCode) {
-				onCourseChange?.(prevCode, null);
-			}
 			const copy = { ...c };
 			delete copy[cellId];
 			return copy;
 		});
+		if (prevCode) {
+			onCourseChange?.(prevCode, null);
+		}
 	};
-
 	// compute total credits for this semester
 	const total = useMemo(() => {
 		return cells.reduce((sum, id) => sum + (credits[id] ?? 0), 0);
 	}, [cells, credits]);
 
-	// if total changes, notify parent
-	useEffect(() => {
-		onCreditsChange?.(total);
-	}, [total, onCreditsChange]);
-
 	// Check if this is a Winter or Summer semester
 	const isOptionalSemester = season === "Winter" || season === "Summer";
-
 	return (
 		<div
 			style={{
@@ -88,15 +82,14 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 						key={id}
 						onDelete={() => deleteCourse(id)}
 						onChange={(course) => {
-								setCredits((c) => ({ ...c, [id]: course?.credits ?? null }));
-								setCodes((prev) => {
-									const prevCode = prev[id] ?? null;
-									const nextCode = course?.code ?? null;
-									if (prevCode !== nextCode) {
-										onCourseChange?.(prevCode, nextCode);
-									}
-									return { ...prev, [id]: nextCode };
-								});
+							// Compute prev/next first, update local state, then notify parent
+							const prevCode = codes[id] ?? null;
+							const nextCode = course?.code ?? null;
+							setCredits((c) => ({ ...c, [id]: course?.credits ?? null }));
+							setCodes((prev) => ({ ...prev, [id]: nextCode }));
+							if (prevCode !== nextCode) {
+								onCourseChange?.(prevCode, nextCode);
+							}
 						}}
 					/>
 				))}
