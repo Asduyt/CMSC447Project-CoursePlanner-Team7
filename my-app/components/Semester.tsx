@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Cell from "./cell";
+import courses from "@/data/courses.json";
 
-export default function Semester({ season, year, onCreditsChange, onDelete, onCourseChange }: { season: string; year: number; onCreditsChange?: (total: number) => void; onDelete?: () => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void }) {
+export default function Semester({ season, year, onCreditsChange, onDelete, onCourseChange, presetCourseCodes }: { season: string; year: number; onCreditsChange?: (total: number) => void; onDelete?: () => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void; presetCourseCodes?: string[] }) {
 	// Start with 4 cells, allow adding more dynamically
 	const [cells, setCells] = useState<number[]>([0, 1, 2, 3]);
 	// track credits for each cell by id
@@ -11,7 +12,38 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 	// track selected course code per cell
 	const [codes, setCodes] = useState<Record<number, string | null>>({ 0: null, 1: null, 2: null, 3: null });
 
-	// On unmount, notify parent to decrement any selected codes in this semester
+	// helper to get next cell id
+	const getNextId = (list: number[]) => (list.length === 0 ? 0 : list[list.length - 1] + 1);
+
+	// helper to compute total credits from a list of cell ids
+	const computeTotal = (ids: number[], creditMap: Record<number, number | null>) => {
+		let sum = 0;
+		for (let i = 0; i < ids.length; i++) {
+			const id = ids[i];
+			sum += creditMap[id] ?? 0;
+		}
+		return sum;
+	};
+
+	// when a preset course list is provided, expand to that size so we can render all items
+	useEffect(() => {
+		if (!presetCourseCodes || presetCourseCodes.length === 0) return;
+		setCells((prev) => {
+			const needed = presetCourseCodes.length - prev.length;
+			if (needed <= 0) return prev;
+			const start = getNextId(prev);
+			const extra: number[] = [];
+			for (let i = 0; i < needed; i++) extra.push(start + i);
+			setCredits((c) => {
+				const copy: Record<number, number | null> = { ...c };
+				extra.forEach((id) => (copy[id] = null));
+				return copy;
+			});
+			return [...prev, ...extra];
+		});
+	}, [presetCourseCodes]);
+
+	// notify parent to decrement any selected codes in this semester
 	useEffect(() => {
 		return () => {
 			if (onCourseChange) {
@@ -20,8 +52,6 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 				});
 			}
 		};
-	// it's okay to depend on codes to capture latest selections; this effect only runs cleanup on unmount
-	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	// function to add a new course cell
@@ -53,10 +83,12 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 			onCourseChange?.(prevCode, null);
 		}
 	};
-	// compute total credits for this semester
-	const total = useMemo(() => {
-		return cells.reduce((sum, id) => sum + (credits[id] ?? 0), 0);
-	}, [cells, credits]);
+
+	// report credit changes whenever total changes
+	const total = computeTotal(cells, credits);
+	useEffect(() => {
+		onCreditsChange?.(total);
+	}, [total]);
 
 	// Check if this is a Winter or Summer semester
 	const isOptionalSemester = season === "Winter" || season === "Summer";
@@ -77,22 +109,37 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 				<div>Credits: {total}</div>
 			</div>
 			<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-				{cells.map((id, index) => (
-						<Cell
-						key={id}
-						onDelete={() => deleteCourse(id)}
-						onChange={(course) => {
-							// Compute prev/next first, update local state, then notify parent
-							const prevCode = codes[id] ?? null;
-							const nextCode = course?.code ?? null;
-							setCredits((c) => ({ ...c, [id]: course?.credits ?? null }));
-							setCodes((prev) => ({ ...prev, [id]: nextCode }));
-							if (prevCode !== nextCode) {
-								onCourseChange?.(prevCode, nextCode);
-							}
-						}}
-					/>
-				))}
+		{cells.map((id, index) => {
+			// find a preset course for this index (if any)
+			let presetCourse: { code: string; name: string; credits: number } | undefined = undefined;
+			if (presetCourseCodes && presetCourseCodes[index]) {
+				const code = String(presetCourseCodes[index]);
+				for (let i = 0; i < courses.length; i++) {
+					const c = courses[i] as any;
+					if (String(c.code).toUpperCase() === code.toUpperCase()) {
+						presetCourse = { code: c.code, name: c.name, credits: c.credits as number };
+						break;
+					}
+				}
+			}
+			return (
+			<Cell
+				key={id}
+				onDelete={() => deleteCourse(id)}
+				onChange={(course) => {
+					// Compute prev/next first, update local state, then notify parent
+					const prevCode = codes[id] ?? null;
+					const nextCode = course?.code ?? null;
+					setCredits((c) => ({ ...c, [id]: course?.credits ?? null }));
+					setCodes((prev) => ({ ...prev, [id]: nextCode }));
+					if (prevCode !== nextCode) {
+						onCourseChange?.(prevCode, nextCode);
+					}
+			    }}
+			    presetCourse={presetCourse}
+		    />
+			);
+		})}
 			</div>
 
 			<div style={{ marginTop: 10 }}>
