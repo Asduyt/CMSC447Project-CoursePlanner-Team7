@@ -9,12 +9,11 @@ import RequirementsSidebar from "@/components/RequirementsSidebar";
 export default function Home() {
   const [resetCount, setResetCount] = useState(0);
   const [showTransfers, setShowTransfers] = useState<number[]>([]);
+  const [prefillOn, setPrefillOn] = useState(false);
   
   // State for additional Winter/Summer semesters
-  const [additionalSemesters, setAdditionalSemesters] = useState<{
-    [key: string]: boolean; 
-  }>({});
-  
+  const [additionalSemesters, setAdditionalSemesters] = useState<{[key: string]: boolean;}>({});
+
   // Modal state for adding Winter/Summer semester
   const [showAddSemesterModal, setShowAddSemesterModal] = useState(false);
   const [newSemesterType, setNewSemesterType] = useState<"Winter" | "Summer">("Winter");
@@ -43,22 +42,44 @@ export default function Home() {
       delete newState[key];
       return newState;
     });
+
+    // reset credit counts for if u removed optional semester (like summer/winter) so the year and total update correctly
+    const lower = type.toLowerCase();
+    if (lower === "winter") {
+      if (year === 1) setY1Winter(0);
+      else if (year === 2) setY2Winter(0);
+      else if (year === 3) setY3Winter(0);
+      else if (year === 4) setY4Winter(0);
+    } else if (lower === "summer") {
+      if (year === 1) setY1Summer(0);
+      else if (year === 2) setY2Summer(0);
+      else if (year === 3) setY3Summer(0);
+      else if (year === 4) setY4Summer(0);
+    }
   };
   
   // track credits for each semester to help us show it
   const [y1Fall, setY1Fall] = useState(0);
   const [y1Spring, setY1Spring] = useState(0);
+  const [y1Winter, setY1Winter] = useState(0);
+  const [y1Summer, setY1Summer] = useState(0);
   const [y2Fall, setY2Fall] = useState(0);
   const [y2Spring, setY2Spring] = useState(0);
+  const [y2Winter, setY2Winter] = useState(0);
+  const [y2Summer, setY2Summer] = useState(0);
   const [y3Fall, setY3Fall] = useState(0);
   const [y3Spring, setY3Spring] = useState(0);
+  const [y3Winter, setY3Winter] = useState(0);
+  const [y3Summer, setY3Summer] = useState(0);
   const [y4Fall, setY4Fall] = useState(0);
   const [y4Spring, setY4Spring] = useState(0);
+  const [y4Winter, setY4Winter] = useState(0);
+  const [y4Summer, setY4Summer] = useState(0);
 
-  const y1 = y1Fall + y1Spring;
-  const y2 = y2Fall + y2Spring;
-  const y3 = y3Fall + y3Spring;
-  const y4 = y4Fall + y4Spring;
+  const y1 = y1Fall + y1Spring + y1Winter + y1Summer;
+  const y2 = y2Fall + y2Spring + y2Winter + y2Summer;
+  const y3 = y3Fall + y3Spring + y3Winter + y3Summer;
+  const y4 = y4Fall + y4Spring + y4Winter + y4Summer;
   const total = y1 + y2 + y3 + y4 + totalTransferCredits;
   
   // Track selected course codes across all semesters to drive requirements sidebar
@@ -96,6 +117,66 @@ export default function Home() {
     3: setY3Spring,
     4: setY4Spring,
   };
+
+  // helpers for the winter/summer setters
+  const getWinterSetter = (year: number) => {
+    if (year === 1) return setY1Winter;
+    if (year === 2) return setY2Winter;
+    if (year === 3) return setY3Winter;
+    return setY4Winter;
+  };
+
+  const getSummerSetter = (year: number) => {
+    if (year === 1) return setY1Summer;
+    if (year === 2) return setY2Summer;
+    if (year === 3) return setY3Summer;
+    return setY4Summer;
+  };
+
+  // helpers for the pathways presets
+  const getYearPresets = (year: number) => {
+    if (!prefillOn) return undefined;
+    if (year === 1) {
+      return {
+        fall: ["CMSC 201", "MATH 151", "LANG 201", "ENGL GEP"],
+        spring: ["CMSC 202", "MATH 152", "CMSC 203", "AH GEP", "SS GEP"],
+      };
+    }
+    if (year === 2) {
+      return {
+        fall: ["CMSC 331", "CMSC 341", "SCI SEQ I", "SS GEP", "ELECTIVE"],
+        spring: ["CMSC 313", "MATH 221", "SCI SEQ II", "SCI LAB GEP", "SS GEP"],
+      };
+    }
+    if (year === 3) {
+      return {
+        fall: ["CMSC 304", "CMSC 411", "CMSC 4XX - TEC", "STAT 355"],
+        spring: ["CMSC 421", "CMSC 4XX - CS", "CMSC 4XX - TEC", "AH GEP", "C GEP"],
+      };
+    }
+    return {
+      fall: ["CMSC 441", "CMSC 447", "UL ELECT", "ELECTIVE", "ELECTIVE"],
+      spring: ["CMSC 4XX - CS", "CMSC 4XX - TEC", "ELECTIVE", "ELECTIVE", "ELECTIVE"],
+    };
+  };
+
+  const clearSchedule = () => {
+    // reset transfers and optional semesters
+    setShowTransfers([]);
+    setTransferCredits({});
+    setAdditionalSemesters({});
+    // reset selections
+    setSelectedCodes(new Map());
+    // reset all per-semester credits
+    setY1Fall(0); setY1Spring(0); setY1Winter(0); setY1Summer(0);
+    setY2Fall(0); setY2Spring(0); setY2Winter(0); setY2Summer(0);
+    setY3Fall(0); setY3Spring(0); setY3Winter(0); setY3Summer(0);
+    setY4Fall(0); setY4Spring(0); setY4Winter(0); setY4Summer(0);
+    // close modal and clear all the models so we start from scratch
+    setShowAddSemesterModal(false);
+    setPrefillOn(false);
+    setResetCount((n) => n + 1);
+  };
   
   return (
     // the main page layout
@@ -105,8 +186,9 @@ export default function Home() {
           {/* header bar with the title + theme toggle */}
           <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>UMBC COEIT Course Planner</h1>
           <ThemeToggle />
+          {/* prefill button that allows you to prefill the planner with suggested courses from the pathways website */}
           <button
-            onClick={() => setResetCount((n) => n + 1)}
+            onClick={() => setPrefillOn((v) => !v)}
             style={{
               background: "var(--surface)",
               color: "var(--foreground)",
@@ -115,8 +197,19 @@ export default function Home() {
               borderRadius: 6,
               cursor: "pointer",
             }}
-          >
-            Clear Schedule
+          > Prefill Pathways 
+          </button>
+          <button
+            onClick={clearSchedule}
+            style={{
+              background: "var(--surface)",
+              color: "var(--foreground)",
+              border: "1px solid var(--border)",
+              padding: "6px 10px",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          > Clear Schedule
           </button>
               {/* Global Transfer button (adds a transfer box above Year 1) */}
               <button
@@ -151,7 +244,6 @@ export default function Home() {
         </div>
       </header>
       {/* all the semesters layout page */}
-      {/* NEED TO ADD -> option to add winter/summer semesters */}
       <main className="row-start-2 w-full" style={{ display: "flex", justifyContent: "center" }}>
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start", width: "100%", maxWidth: 1400 }}>
           <div
@@ -196,6 +288,9 @@ export default function Home() {
                 onFallCreditsChange={fallSetters[yr]}
                 onSpringCreditsChange={springSetters[yr]}
                 hasWinter={!!additionalSemesters[`winter_${yr}`]}
+                onWinterCreditsChange={getWinterSetter(yr)}
+                onSummerCreditsChange={getSummerSetter(yr)}
+                presets={getYearPresets(yr)}
                 hasSummer={!!additionalSemesters[`summer_${yr}`]}
                 onRemoveWinter={() => removeSemester("Winter", yr)}
                 onRemoveSummer={() => removeSemester("Summer", yr)}
@@ -209,11 +304,10 @@ export default function Home() {
             <div style={{ fontWeight: 600 }}>Total credits overall: {total}</div>
           </div>
           </div>
-          <RequirementsSidebar completedSet={new Set(selectedCodes.keys())} />
+          <RequirementsSidebar completedSet={new Set(selectedCodes.keys())} completedCounts={selectedCodes} />
         </div>
       </main>
       
-      {/* Add Winter/Summer Semester Modal */}
       {showAddSemesterModal && (
         <div
           style={{

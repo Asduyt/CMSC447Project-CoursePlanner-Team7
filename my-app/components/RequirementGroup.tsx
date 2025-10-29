@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import RequirementCell from "./RequirementCell";
 
 type Course = {
@@ -13,6 +13,7 @@ export default function RequirementGroup({
   title,
   courses,
   completedSet,
+  completedCounts,
   showList = true,
   requiredCount,
   sameSubject,
@@ -21,81 +22,104 @@ export default function RequirementGroup({
   title: string;
   courses: Course[];
   completedSet?: Set<string>;
-  showList?: boolean; // when false, show compact summary instead of full list
+  completedCounts?: Map<string, number>;
+  showList?: boolean; 
   requiredCount?: number;
   sameSubject?: boolean;
   creditCap?: number;
 }) {
   const [open, setOpen] = useState(false);
 
-  const totals = useMemo(() => {
-    const totalCredits = courses.reduce((s, c) => s + (c.credits ?? 0), 0);
-    const completedCredits = courses.reduce((s, c) => {
-      const key = (c.code || "").replace(/\s+/g, "").toUpperCase();
-      return s + ((completedSet?.has(key) ?? false) ? (c.credits ?? 0) : 0);
-    }, 0);
-    const totalCount = courses.length;
-    const completedCount = courses.reduce((s, c) => {
-      const key = (c.code || "").replace(/\s+/g, "").toUpperCase();
-      return s + ((completedSet?.has(key) ?? false) ? 1 : 0);
-    }, 0);
-    return { totalCredits, completedCredits, totalCount, completedCount };
-  }, [courses, completedSet]);
+  // normalize a course code to use as a key (remove spaces, uppercase)
+  const norm = (s: string) => (s || "").replace(/\s+/g, "").toUpperCase();
 
-  // list of selected courses (raw)
-  const selected = useMemo(() => {
-    return courses.filter((c) => {
-      const key = (c.code || "").replace(/\s+/g, "").toUpperCase();
-      return !!completedSet?.has(key);
-    });
-  }, [courses, completedSet]);
+  // how many times is a given code selected (from counts or set)
+  const getCountFor = (code?: string) => {
+    const key = norm(code || "");
+    if (!key) return 0;
+    const fromCounts = completedCounts?.get(key);
+    if (typeof fromCounts === "number") return fromCounts;
+    return completedSet?.has(key) ? 1 : 0;
+  };
 
-  // determine which selected courses should count toward the requirement
-  const visibleSelected = useMemo(() => {
-    // If a credit cap is provided, include selected courses until the credit cap would be exceeded.
+  // totals across the whole group
+  let totals_totalCredits = 0;
+  let totals_completedCredits = 0;
+  let totals_completedCount = 0;
+  for (const c of courses) {
+    totals_totalCredits += c.credits ?? 0;
+    if (getCountFor(c.code) > 0) {
+      totals_completedCredits += c.credits ?? 0;
+      totals_completedCount += 1;
+    }
+  }
+  const totals_totalCount = courses.length;
+
+  // build the list of selected courses
+  const selected: Course[] = [];
+  for (const c of courses) {
+    const times = getCountFor(c.code);
+    for (let i = 0; i < times; i++) selected.push(c);
+  }
+
+  // sum of all selected credits (counting duplicates -> for if we have like CMSC 4XX)
+  let totalSelectedCreditsAll = 0;
+  for (const c of courses) {
+    const times = getCountFor(c.code);
+    if (times > 0) totalSelectedCreditsAll += (c.credits ?? 0) * times;
+  }
+
+  // check which selected courses count toward this requirement
+  let visibleSelected: Course[] = [];
+  if (typeof creditCap === "number") {
+    // include up to the credit cap
+    let acc = 0;
+    for (const c of selected) {
+      const cr = c.credits ?? 0;
+      if (acc + cr <= creditCap) {
+        visibleSelected.push(c);
+        acc += cr;
+      }
+    }
+  } else if (!requiredCount || requiredCount <= 0) {
+    visibleSelected = selected.slice();
+  } else if (sameSubject) {
+    // choose the subject with the most selected courses
+    const bySubject: Record<string, Course[]> = {};
+    for (const c of selected) {
+      const subj = (c.code || "").split(" ")[0] || "";
+      if (!bySubject[subj]) bySubject[subj] = [];
+      bySubject[subj].push(c);
+    }
+    let best: Course[] = [];
+    for (const k in bySubject) {
+      if (bySubject[k].length > best.length) best = bySubject[k];
+    }
+    visibleSelected = best.slice(0, requiredCount);
+  } else {
+    visibleSelected = selected.slice(0, requiredCount);
+  }
+
+  const displayCount = requiredCount ? Math.min(visibleSelected.length, requiredCount) : totals_completedCount;
+  const totalNeeded = requiredCount ?? totals_totalCount;
+
+  const displayCompletedCredits = typeof creditCap === "number" ? Math.min(totalSelectedCreditsAll, creditCap) : totals_completedCredits;
+  const displayTotalCredits = typeof creditCap === "number" ? creditCap : totals_totalCredits;
+
+  // find percentage that's complete to display
+  const percentComplete = (() => {
+    let numerator = 0;
+    let denominator = 0;
     if (typeof creditCap === "number") {
-      const included: Course[] = [];
-      let acc = 0;
-      // use the order of `selected` (which follows the courses array) to pick courses
-      for (const c of selected) {
-        const cr = c.credits ?? 0;
-        if (acc + cr <= creditCap) {
-          included.push(c);
-          acc += cr;
-        }
-      }
-      return included;
+      numerator = displayCompletedCredits;
+      denominator = displayTotalCredits || 0;
+    } else {
+      numerator = displayCount;
+      denominator = totalNeeded || 0;
     }
-
-    if (!requiredCount || requiredCount <= 0) return selected.slice();
-
-    if (sameSubject) {
-      // group selected by subject prefix (before first space)
-      const bySubject: Record<string, Course[]> = {};
-      for (const c of selected) {
-        const subj = (c.code || "").split(" ")[0] || "";
-        if (!bySubject[subj]) bySubject[subj] = [];
-        bySubject[subj].push(c);
-      }
-      // find the subject with the most selected courses
-      let best: Course[] = [];
-      for (const k of Object.keys(bySubject)) {
-        if (bySubject[k].length > best.length) best = bySubject[k];
-      }
-      if (best.length >= requiredCount) return best.slice(0, requiredCount);
-      return [];
-    }
-
-    // otherwise, just take up to requiredCount selected courses (first ones)
-    return selected.slice(0, requiredCount);
-  }, [selected, requiredCount, sameSubject]);
-
-  const displayCount = requiredCount ? Math.min(visibleSelected.length, requiredCount) : totals.completedCount;
-  const totalNeeded = requiredCount ?? totals.totalCount;
-
-  const sumVisibleCredits = visibleSelected.reduce<number>((s, c) => s + (c.credits ?? 0), 0);
-  const displayCompletedCredits = typeof creditCap === "number" ? Math.min(sumVisibleCredits, creditCap) : totals.completedCredits;
-  const displayTotalCredits = typeof creditCap === "number" ? creditCap : totals.totalCredits;
+    if (!denominator) return 0;
+    return Math.round((numerator / denominator) * 100);
+  })();
 
   return (
     <section>
@@ -111,10 +135,15 @@ export default function RequirementGroup({
 
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: 12, minWidth: 0 }}>
           {/credit/i.test(title) ? (
-            // For credit-based groups: always show credit totals in the collapsed/header area (capped)
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>{displayCompletedCredits}/{displayTotalCredits} cr</div>
+            // for credit-based groups -> show capped credit totals and percent
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>
+              {displayCompletedCredits}/{displayTotalCredits} cr · {percentComplete}%
+            </div>
           ) : (
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>{displayCount}/{totalNeeded}</div>
+            // for count-based groups -> show count and percent
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>
+              {displayCount}/{totalNeeded} · {percentComplete}%
+            </div>
           )}
           <div style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▾</div>
         </div>
@@ -123,11 +152,11 @@ export default function RequirementGroup({
       {open && (
         <div>
           {showList ? (
-            // For normal groups: if a requiredCount exists and we've reached it, only show the counted/completed courses.
+            // for normal groups -> if a requiredCount exists and we've reached it, only show the counted/completed courses
             (requiredCount && visibleSelected.length >= requiredCount) ? (
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-                {visibleSelected.map((c) => (
-                  <RequirementCell key={c.code} course={c} completedSet={completedSet} />
+                {visibleSelected.map((c, i) => (
+                  <RequirementCell key={`${c.code}-${i}`} course={c} completedSet={completedSet} />
                 ))}
               </ul>
             ) : (
@@ -138,10 +167,10 @@ export default function RequirementGroup({
               </ul>
             )
           ) : visibleSelected.length > 0 ? (
-            // credit-groups in compact mode: when selections exist, render the same UL of RequirementCell so styling matches other groups
+            // credit-groups in compact mode: when selections exist, render the same so styling matches other groups
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-              {visibleSelected.map((c) => (
-                <RequirementCell key={c.code} course={c} completedSet={completedSet} />
+              {visibleSelected.map((c, i) => (
+                <RequirementCell key={`${c.code}-${i}`} course={c} completedSet={completedSet} />
               ))}
             </ul>
           ) : (

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import courses from "@/data/courses.json";
 
 // This component renders a text input paired with a datalist to provide a dropdown of suggestions.
-export default function Cell({ onDelete, onChange }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void }) {
+export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void; presetCourse?: { code: string; name: string; credits: number } | null }) {
 	const [value, setValue] = useState("");
 		const [open, setOpen] = useState(false);
 		const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -33,6 +33,17 @@ export default function Cell({ onDelete, onChange }: { onDelete?: () => void; on
 				document.addEventListener("mousedown", handleClickOutside);
 				return () => document.removeEventListener("mousedown", handleClickOutside);
 			}, []);
+
+		// add the preset course stuff
+		useEffect(() => {
+			if (!presetCourse) return;
+			// if already selected to this course, skip
+			if (selected && selected.code === presetCourse.code) return;
+			const composed = `${presetCourse.code} ${presetCourse.name}`;
+			setValue(composed);
+			setSelected(presetCourse);
+			onChange?.(presetCourse);
+		}, [presetCourse?.code, presetCourse?.name, presetCourse?.credits]);
 
 	// moved json loading outside of component and into a new file
 	return (
@@ -278,7 +289,6 @@ export default function Cell({ onDelete, onChange }: { onDelete?: () => void; on
 					)}
 
 					</div>
-
 					{/* credits removed - reverted to previous layout */}
 				</div>
 		</div>

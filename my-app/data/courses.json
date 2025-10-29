@@ -216,7 +216,7 @@
     "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective", "Computer Science Technical Electives"]
   },
   {
-  "code": "CMSC 400",
+  "code": "CMSC 4XX",
     "name": "400-level Computer Science Elective",
     "credits": 3,
     "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Technical Electives"]
@@ -226,5 +226,77 @@
     "name": "Composition",
     "credits": 3,
     "requirements": ["120 Academic Credits", "English Composition"]
+  },
+  {
+    "code": "LANG 201",
+    "name": "Foreign Language 201",
+    "credits": 4,
+    "requirements": ["120 Academic Credits"]
+  },
+  {
+    "code": "ENGL GEP",
+    "name": "English GEP",
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "English Composition"]
+  },
+  {
+    "code": "AH GEP",
+    "name": "Arts and Humanities GEP",
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "Arts and Humanities"]
+  },
+  {
+    "code": "SS GEP",
+    "name": "Social Sciences GEP",
+    "credits": 3,
+    "requirements": ["120 Academic Credits"]
+  },
+  {
+    "code": "C GEP",
+    "name": "Culture GEP",
+    "credits": 3,
+    "requirements": ["120 Academic Credits"]
+  },
+  {
+    "code": "SCI SEQ I",
+    "name": "Science Sequence I (Non-lab)",
+    "credits": 4,
+    "requirements": ["120 Academic Credits", "Science"]
+  },
+  {
+    "code": "SCI SEQ II",
+    "name": "Science Sequence II (Non-lab)",
+    "credits": 4,
+    "requirements": ["120 Academic Credits", "Science"]
+  },
+  {
+    "code": "SCI LAB GEP",
+    "name": "Science Lab GEP",
+    "credits": 2,
+    "requirements": ["120 Academic Credits", "Science Lab"]
+  },
+  {
+    "code": "ELECTIVE",
+    "name": "Elective",
+    "credits": 3,
+    "requirements": ["120 Academic Credits"]
+  },
+  {
+    "code": "UL ELECT",
+    "name": "Upper-Level Elective",
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits"]
+  },
+  {
+    "code": "CMSC 4XX - CS",
+    "name": "400-level Computer Science Elective (CS Elective)",
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Elective"]
+  },
+  {
+    "code": "CMSC 4XX - TEC",
+    "name": "400-level Computer Science Elective (Technical Elective)",
+    "credits": 3,
+    "requirements": ["120 Academic Credits", "45 upper level credits", "Computer Science Technical Electives"]
   }
 ]
