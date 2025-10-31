@@ -107,7 +107,9 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
 							if (!open) setHighlightedIndex(0);
 						}}
 						onKeyDown={(e) => {
-							const filtered = courses.filter((c) => `${c.code} ${c.name}`.toLowerCase().includes(value.toLowerCase()));
+							const norm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
+							const q = norm(value);
+							const filtered = courses.filter((c) => norm(`${c.code} ${c.name}`).includes(q));
 							if (e.key === "ArrowDown") {
 								e.preventDefault();
 								if (!open) {
@@ -135,7 +137,9 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
 							} else if (e.key === "Enter") {
 								e.preventDefault();
 								if (open && highlightedIndex !== null) {
-									const filtered = courses.filter((c) => `${c.code} ${c.name}`.toLowerCase().includes(value.toLowerCase()));
+									const norm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
+									const q = norm(value);
+									const filtered = courses.filter((c) => norm(`${c.code} ${c.name}`).includes(q));
 									const chosen = filtered[highlightedIndex];
 									if (chosen) {
 										setValue(`${chosen.code} ${chosen.name}`);
@@ -224,7 +228,9 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
 								}}
 								>
 							{(() => {
-									const filtered = courses.filter((c) => `${c.code} ${c.name}`.toLowerCase().includes(value.toLowerCase()));
+									const norm = (s: string) => s.replace(/\s+/g, "").toLowerCase();
+									const q = norm(value);
+									const filtered = courses.filter((c) => norm(`${c.code} ${c.name}`).includes(q));
 									const items = [] as any[];
 
 									// Blank option at the top
@@ -287,9 +293,7 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
 							})()}
 						</ul>
 					)}
-
 					</div>
-					{/* credits removed - reverted to previous layout */}
 				</div>
 		</div>
 	);

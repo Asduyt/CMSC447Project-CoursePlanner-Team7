@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 type MdRow = { course: string; credits: number | null; transfersAs: string };
 
@@ -24,7 +24,7 @@ const MARYLAND_SCHOOLS: { id: number; name: string }[] = [
   { id: 1792, name: "Wor-Wic Community College"},
 ];
 
-export default function TransferBox({ onDelete, onCreditsChange }: { onDelete?: () => void; onCreditsChange?: (total: number) => void }) {
+export default function TransferBox({ onDelete, onCreditsChange, onCourseChange, onRowsChange }: { onDelete?: () => void; onCreditsChange?: (total: number) => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void; onRowsChange?: (rows: { code: string; credits: number }[]) => void }) {
   // small css helpers to keep JSX simple and readable
   const styles: Record<string, CSSProperties> = {
     card: {
@@ -115,22 +115,72 @@ export default function TransferBox({ onDelete, onCreditsChange }: { onDelete?: 
     { id: 1, transferTo: "", course: "", credits: "" },
   ]);
 
+  // extract a basic course code like "CMSC201" from a longer string
+  function extractCode(text: string): string {
+    if (!text) return text as any;
+    const s = String(text).trim();
+    // consider only the part before a dash (handles if we have like "CMSC201 - Title")
+    let head = s;
+    const dashIdx = (() => {
+      const i1 = s.indexOf("-");
+      const i2 = s.indexOf("–");
+      const i3 = s.indexOf("—");
+      let idx = -1;
+      if (i1 >= 0) idx = i1;
+      if (i2 >= 0 && (idx === -1 || i2 < idx)) idx = i2;
+      if (i3 >= 0 && (idx === -1 || i3 < idx)) idx = i3;
+      return idx;
+    })();
+    if (dashIdx >= 0) head = s.slice(0, dashIdx).trim();
+
+    // i try spaced patterns like "CMSC 201"
+    const parts = head.split(/\s+/);
+    if (parts.length >= 2) {
+      const subj = parts[0].toUpperCase();
+      const num = parts[1].toUpperCase();
+      const subjOk = /^[A-Z]{2,6}$/.test(subj);
+      const numOk = /^(\d{3}[A-Z]?|\dXX|4XX|UL|ELECT|[A-Z]{1,3})$/.test(num);
+      if (subjOk && numOk) return `${subj}${num}`;
+    }
+    //then try unspaced patterns like "CMSC201"
+    const up = head.toUpperCase();
+    const m = /^([A-Z]{2,6})(\d{3}[A-Z]?|\dXX|4XX|UL|ELECT)$/.exec(up);
+    if (m) return `${m[1]}${m[2]}`;
+    return head;
+  }
+
+  // 
   const addCourse = () =>
     setRows((prev) => [...prev, { id: (prev.at(-1)?.id ?? -1) + 1, transferTo: "", course: "", credits: "" }]);
 
-  const deleteCourse = (id: number) => setRows((prev) => prev.filter((x) => x.id !== id));
+  // delete a course by its internal id
+  const deleteCourse = (id: number) => {
+    setRows((prev) => {
+  const next = prev.filter((x) => x.id !== id);
+  return next;
+    });
+  };
 
+  // set transfer target university
   const setTransferTarget = (id: number, value: string) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, transferTo: value } : r)));
   };
 
+  // set course name value
   const setCourseValue = (id: number, value: string) =>
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, course: value } : r)));
+    setRows((prev) => {
+      const next = prev.map((r) => (r.id === id ? { ...r, course: value } : r));
+      return next;
+    });
 
+  // set credits value
   const setCreditsValue = (id: number, value: string) =>
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, credits: value } : r)));
+    setRows((prev) => {
+      const next = prev.map((r) => (r.id === id ? { ...r, credits: value } : r));
+      return next;
+    });
 
-  const universities = ["UMBC", "Towson University", "Johns Hopkins University", "Community College", "Other"];
+  const universities = ["UMBC", "Towson University", "Johns Hopkins University", "UMD - College Park", "Community College", "Other"];
 
   // compute credits
   const creditTotal = useMemo(() => {
@@ -140,6 +190,22 @@ export default function TransferBox({ onDelete, onCreditsChange }: { onDelete?: 
   useEffect(() => {
     onCreditsChange?.(creditTotal);
   }, [creditTotal]);
+
+  // Notify parent with normalized rows after rows change to avoid parent update during child render
+  const lastRowsSigRef = useRef<string>("");
+  useEffect(() => {
+    if (!onRowsChange) return;
+    const mapped = rows
+      .filter((r) => !!r.course)
+      .map((r) => ({ code: extractCode(r.course), credits: parseFloat(r.credits) || 0 }));
+    const sig = mapped
+      .map((r) => `${String(r.code).replace(/\s+/g, "").toUpperCase()}|${r.credits || 0}`)
+      .sort()
+      .join("||");
+    if (sig === lastRowsSigRef.current) return;
+    lastRowsSigRef.current = sig;
+    onRowsChange(mapped);
+  }, [rows]);
 
   // maryland CC modal state
   const [mdOpen, setMdOpen] = useState(false);
@@ -200,7 +266,7 @@ export default function TransferBox({ onDelete, onCreditsChange }: { onDelete?: 
       return;
     }
     // best way that could be done...
-    setRows((prev) => {
+  setRows((prev) => {
       let nextId = (prev.at(-1)?.id ?? -1) + 1;
       const appended = chosen.map((r) => ({
         id: nextId++,
@@ -208,10 +274,19 @@ export default function TransferBox({ onDelete, onCreditsChange }: { onDelete?: 
         course: r.transfersAs,
         credits: r.credits != null ? String(r.credits) : "",
       }));
-      return [...prev, ...appended];
+      const next = [...prev, ...appended];
+      return next;
     });
 
-    setMdOpen(false);
+  // i set it so that it closes and reset the model so it starts fresh next time you want to add more transfer classes
+  setMdOpen(false);
+  setMdRows([]);
+  setSelectedRows([]);
+  setMdPrefix("");
+  setMdOldSchool("");
+  setMdSchool(5209);
+  setMdError(null);
+  setMdLoading(false);
   }
 
   return (

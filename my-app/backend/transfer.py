@@ -95,10 +95,33 @@ def _to_rows(df: pd.DataFrame):
         return []
     course_col, credits_col, transfers_col = _normalize_columns(df)
     rows = []
+
+    def _strip_course_details(text: str) -> str:
+        # delete the text "Course Details" from the end of a string
+        if not text:
+            return text
+        s = str(text).strip()
+        core = "course details"
+        # common separators that might appear before the label
+        seps = [" - ", " — ", " – ", ": ", "| ", ", ", " "]
+        # try exact label first
+        if s.lower().endswith(core):
+            return s[: len(s) - len("Course Details")].strip()
+        # then try with separators
+        for sep in seps:
+            suffix = sep + "Course Details"
+            if s.lower().endswith(suffix.lower()):
+                return s[: len(s) - len(suffix)].strip()
+        return s
+
     for _, row in df.iterrows():
         course = str(row.get(course_col, "")).strip() if course_col else ""
         credits_raw = row.get(credits_col, None) if credits_col else None
         transfers_as = str(row.get(transfers_col, "")).strip() if transfers_col else ""
+
+        # clean up the text so it looks nice
+        course = _strip_course_details(course)
+        transfers_as = _strip_course_details(transfers_as)
 
         # parse credits to float if possible
         credits = None

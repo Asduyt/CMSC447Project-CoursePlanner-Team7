@@ -2,19 +2,7 @@
 import courses from "@/data/courses.json";
 import RequirementGroup from "./RequirementGroup";
 
-type Requirement = {
-  code: string;
-  label?: string;
-};
-
-const DEFAULT_REQUIREMENTS: Requirement[] = [
-  { code: "CMSC 201" },
-  { code: "CMSC 202" },
-  { code: "CMSC 203" },
-  { code: "MATH 151" },
-];
-
-export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENTS, completedSet, completedCounts }: { requirements?: Requirement[]; completedSet?: Set<string>; completedCounts?: Map<string, number> }) {
+export default function RequirementsSidebar({ completedSet, completedCounts, extraCredits }: { completedSet?: Set<string>; completedCounts?: Map<string, number>; extraCredits?: number }) {
   // build a mapping from requirement name -> courses that satisfy it
   const reqMap: Record<string, any[]> = {};
   courses.forEach((c: any) => {
@@ -41,9 +29,19 @@ export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENT
   }
   const groups = [...creditGroups, ...nonCreditGroups];
 
-  //  helpers to use later on
+  // helper to normalize course codes so we can match them against completedSet/completedCounts
   const norm = (s: string) => (s || "").replace(/\s+/g, "").toUpperCase();
+  const subjectFromCode = (code: string) => {
+    const raw = String(code || "");
+    // Prefer split-on-space for backwards compatibility
+    const first = raw.split(" ")[0];
+    if (first && /[\d]/.test(first) === false) return first.toUpperCase();
+    // Fallback: take leading letters
+    const m = /^[A-Za-z]+/.exec(raw);
+    return (m ? m[0] : "").toUpperCase();
+  };
 
+  // helper to get count of completions for a given course code
   const getCountFor = (code?: string) => {
     const key = norm(code || "");
     if (!key) return 0;
@@ -84,6 +82,10 @@ export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENT
           const count = getCountFor(c.code);
           if (count > 0) sum += (c.credits ?? 0) * count;
         }
+        // add extra transfer credits only for the 120 Academic Credits group
+        if (/^120 Academic Credits$/i.test(group) && typeof extraCredits === 'number') {
+          sum += extraCredits;
+        }
         num += Math.min(sum, cfg.creditCap);
         den += cfg.creditCap;
         continue;
@@ -101,7 +103,7 @@ export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENT
         if (cfg.sameSubject) {
           const bySubject: Record<string, number> = {};
           for (const c of selected) {
-            const subj = (c.code || '').split(' ')[0] || '';
+            const subj = subjectFromCode(c.code || '');
             bySubject[subj] = (bySubject[subj] ?? 0) + 1;
           }
           let best = 0;
@@ -153,8 +155,9 @@ export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENT
       </div>
 
   {groups.map((group) => {
-        const cfg = getGroupConfig(group);
-        return (
+    const cfg = getGroupConfig(group);
+    const is120 = /^120 Academic Credits$/i.test(group);
+    return (
           <div key={group} style={{ marginBottom: 12 }}>
             <RequirementGroup
               title={group}
@@ -166,6 +169,7 @@ export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENT
               requiredCount={cfg.requiredCount}
               sameSubject={cfg.sameSubject}
               creditCap={cfg.creditCap}
+              extraCreditsForThisGroup={is120 ? (extraCredits ?? 0) : 0}
             />
           </div>
         );

@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import Year from "@/components/Year";
 import TransferBox from "@/components/TransferBox";
 import RequirementsSidebar from "@/components/RequirementsSidebar";
+import courses from "@/data/courses.json";
 
 export default function Home() {
   const [resetCount, setResetCount] = useState(0);
@@ -28,6 +29,48 @@ export default function Home() {
   // track credits for transfer boxes by id
   const [transferCredits, setTransferCredits] = useState<Record<number, number>>({});
   const totalTransferCredits = useMemo(() => Object.values(transferCredits).reduce((a, b) => a + b, 0), [transferCredits]);
+  // track the actual rows of transfer items for requirement matching & credits
+  const [transferRowsByBox, setTransferRowsByBox] = useState<Record<number, { code: string; credits: number }[]>>({});
+  // compute extra transfer credits that don't map to a known catalog course (so they still count toward 120)
+  const unmatchedTransferCredits = useMemo(() => {
+    const norm = (s: string) => s.replace(/\s+/g, "").toUpperCase();
+    const catalog = new Set<string>();
+    for (let i = 0; i < (courses as any[]).length; i++) {
+      const c = (courses as any[])[i];
+      if (c && c.code) catalog.add(norm(String(c.code)));
+    }
+    // sum up credits for transfer rows that don't match any catalog course
+    let sum = 0;
+    for (const key in transferRowsByBox) {
+      const list = transferRowsByBox[key] || [];
+      for (let i = 0; i < list.length; i++) {
+        const row = list[i];
+        const codeKey = norm(String(row.code));
+        if (!catalog.has(codeKey)) sum += row.credits || 0;
+      }
+    }
+    return sum;
+  }, [transferRowsByBox]);
+
+  // deduplicated counts for transfer courses: if multiple transfer rows map to the same UMBC code,
+  // only count that code once toward requirements. credits for unmatched courses still sum into 120.
+  const transferCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    const norm = (s: string) => s.replace(/\s+/g, "").toUpperCase();
+    const seen = new Set<string>();
+    for (const key in transferRowsByBox) {
+      const list = transferRowsByBox[key] || [];
+      for (const row of list) {
+        const k = norm(String(row.code || ""));
+        if (!k) continue;
+        if (!seen.has(k)) {
+          map.set(k, 1);
+          seen.add(k);
+        }
+      }
+    }
+    return map;
+  }, [transferRowsByBox]);
   
   const addSemester = () => {
     const key = `${newSemesterType.toLowerCase()}_${newSemesterYear}`;
@@ -83,10 +126,18 @@ export default function Home() {
   const total = y1 + y2 + y3 + y4 + totalTransferCredits;
   
   // Track selected course codes across all semesters to drive requirements sidebar
-  const [selectedCodes, setSelectedCodes] = useState<Map<string, number>>(new Map());
+  // keep semester selections separate from transfer selections
+  const [semesterCounts, setSemesterCounts] = useState<Map<string, number>>(new Map());
+
+  // Combine semester and transfer counts for the requirements sidebar
+  const combinedCounts = useMemo(() => {
+    const map = new Map(semesterCounts);
+    transferCounts.forEach((n, k) => map.set(k, (map.get(k) ?? 0) + n));
+    return map;
+  }, [semesterCounts, transferCounts]);
 
   const handleCourseChange = (prevCode: string | null, nextCode: string | null) => {
-    setSelectedCodes((prev) => {
+    setSemesterCounts((prev) => {
       const map = new Map(prev);
       const norm = (s: string) => s.replace(/\s+/g, "").toUpperCase();
       if (prevCode) {
@@ -138,25 +189,25 @@ export default function Home() {
     if (!prefillOn) return undefined;
     if (year === 1) {
       return {
-        fall: ["CMSC 201", "MATH 151", "LANG 201", "ENGL GEP"],
-        spring: ["CMSC 202", "MATH 152", "CMSC 203", "AH GEP", "SS GEP"],
+        fall: ["CMSC201", "MATH151", "LANG201", "ENGL GEP"],
+        spring: ["CMSC202", "MATH152", "CMSC203", "AH GEP", "SS GEP"],
       };
     }
     if (year === 2) {
       return {
-        fall: ["CMSC 331", "CMSC 341", "SCI SEQ I", "SS GEP", "ELECTIVE"],
-        spring: ["CMSC 313", "MATH 221", "SCI SEQ II", "SCI LAB GEP", "SS GEP"],
+        fall: ["CMSC331", "CMSC341", "SCI SEQ I", "SS GEP", "ELECTIVE"],
+        spring: ["CMSC313", "MATH221", "SCI SEQ II", "SCI LAB GEP", "SS GEP"],
       };
     }
     if (year === 3) {
       return {
-        fall: ["CMSC 304", "CMSC 411", "CMSC 4XX - TEC", "STAT 355"],
-        spring: ["CMSC 421", "CMSC 4XX - CS", "CMSC 4XX - TEC", "AH GEP", "C GEP"],
+        fall: ["CMSC304", "CMSC411", "CMSC4XX - TEC", "STAT355"],
+        spring: ["CMSC421", "CMSC4XX - CS", "CMSC4XX - TEC", "AH GEP", "C GEP"],
       };
     }
     return {
-      fall: ["CMSC 441", "CMSC 447", "UL ELECT", "ELECTIVE", "ELECTIVE"],
-      spring: ["CMSC 4XX - CS", "CMSC 4XX - TEC", "ELECTIVE", "ELECTIVE", "ELECTIVE"],
+      fall: ["CMSC441", "CMSC447", "UL ELECT", "ELECTIVE", "ELECTIVE"],
+      spring: ["CMSC4XX - CS", "CMSC4XX - TEC", "ELECTIVE", "ELECTIVE", "ELECTIVE"],
     };
   };
 
@@ -166,7 +217,7 @@ export default function Home() {
     setTransferCredits({});
     setAdditionalSemesters({});
     // reset selections
-    setSelectedCodes(new Map());
+  setSemesterCounts(new Map());
     // reset all per-semester credits
     setY1Fall(0); setY1Spring(0); setY1Winter(0); setY1Summer(0);
     setY2Fall(0); setY2Spring(0); setY2Winter(0); setY2Summer(0);
@@ -260,7 +311,7 @@ export default function Home() {
           >
           {/* for now, i just copied and pasted and just changed the year, in the future i'll prob change this to be a loop */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-            {showTransfers.map((id) => (
+    {showTransfers.map((id) => (
               <TransferBox
                 key={id}
                 onDelete={() => {
@@ -270,11 +321,21 @@ export default function Home() {
                     delete copy[id];
                     return copy;
                   });
+                  // remove transfer rows tracking for this box
+                  setTransferRowsByBox((prev) => {
+                    const copy = { ...prev };
+                    delete copy[id];
+                    return copy;
+                  });
                   removeGlobalTransfer(id);
                 }}
                 onCreditsChange={(t) =>
                   setTransferCredits((prev) => (prev[id] === t ? prev : { ...prev, [id]: t }))
                 }
+                onRowsChange={(rows) => {
+                // update transfer rows for this box
+                setTransferRowsByBox((prev) => ({ ...prev, [id]: rows }));
+                }}
               />
             ))}
           </div>
@@ -304,7 +365,7 @@ export default function Home() {
             <div style={{ fontWeight: 600 }}>Total credits overall: {total}</div>
           </div>
           </div>
-          <RequirementsSidebar completedSet={new Set(selectedCodes.keys())} completedCounts={selectedCodes} />
+          <RequirementsSidebar completedSet={new Set(combinedCounts.keys())} completedCounts={combinedCounts} extraCredits={unmatchedTransferCredits} />
         </div>
       </main>
       
