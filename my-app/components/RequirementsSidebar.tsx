@@ -1,4 +1,6 @@
 "use client";
+// Sidebar that shows progress on all degree requirements.
+// It reads the course catalog and the selected course codes from the planner.
 import courses from "@/data/courses.json";
 import RequirementGroup from "./RequirementGroup";
 
@@ -15,7 +17,7 @@ const DEFAULT_REQUIREMENTS: Requirement[] = [
 ];
 
 export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENTS, completedSet, completedCounts }: { requirements?: Requirement[]; completedSet?: Set<string>; completedCounts?: Map<string, number> }) {
-  // build a mapping from requirement name -> courses that satisfy it
+  // build a map from requirement name to list of courses that satisfy it
   const reqMap: Record<string, any[]> = {};
   courses.forEach((c: any) => {
     if (!Array.isArray(c.requirements)) return;
@@ -27,10 +29,7 @@ export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENT
     });
   });
 
-  // we order groups in a simple way:
-  // - put credit groups first (alphabetically)
-  // - make sure "120 Academic Credits" appears at the very top if present
-  // - then put the rest (alphabetically)
+  // order groups: credit groups first, then others. Put 120 credits at very top.
   const allGroups = Object.keys(reqMap);
   const creditGroups = allGroups.filter((g) => /credit/i.test(g)).sort();
   const nonCreditGroups = allGroups.filter((g) => !/credit/i.test(g)).sort();
@@ -41,9 +40,10 @@ export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENT
   }
   const groups = [...creditGroups, ...nonCreditGroups];
 
-  //  helpers to use later on
+  // helper: normalize a course code (remove spaces + uppercase)
   const norm = (s: string) => (s || "").replace(/\s+/g, "").toUpperCase();
 
+  // how many times a code was selected (duplicate electives count)
   const getCountFor = (code?: string) => {
     const key = norm(code || "");
     if (!key) return 0;
@@ -53,6 +53,7 @@ export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENT
   };
 
   // helper to get group configuration
+  // figure out rules for a group (how many needed, credit caps, same subject rule)
   const getGroupConfig = (name: string) => {
     const cfg: { requiredCount?: number; sameSubject?: boolean; creditCap?: number } = {};
     if (/^Arts and Humanities$/i.test(name)) cfg.requiredCount = 3;
@@ -69,7 +70,7 @@ export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENT
     return cfg;
   };
 
-  // get the overall completion percentage
+  // overall completion percentage across all groups
   const overallPercent = (() => {
     let num = 0;
     let den = 0;
@@ -139,7 +140,7 @@ export default function RequirementsSidebar({ requirements = DEFAULT_REQUIREMENT
     >
       <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, marginBottom: 8 }}>Degree Requirements</h2>
       <p style={{ marginTop: 0, marginBottom: 12, fontSize: 13, opacity: 0.8 }}>
-        Linked to planner selections. Items are checked automatically.
+        Automatically updates when you pick courses.
       </p>
       {/* overall completion percentage across requirements */}
       <div style={{
