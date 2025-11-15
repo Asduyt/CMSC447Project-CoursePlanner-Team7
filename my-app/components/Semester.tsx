@@ -1,31 +1,36 @@
 "use client";
 
+// A single semester box. Holds several course cells.
+// We keep this simple: arrays of cell ids, and maps for credits and codes.
 import { useEffect, useState } from "react";
 import Cell from "./cell";
 import courses from "@/data/courses.json";
 
-export default function Semester({ season, year, onCreditsChange, onDelete, onCourseChange, presetCourseCodes }: { season: string; year: number; onCreditsChange?: (total: number) => void; onDelete?: () => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void; presetCourseCodes?: string[] }) {
-	// Start with 4 cells, allow adding more dynamically
+// shape of a course in the snapshot we give back to parent
+type SnapshotCourse = { code: string; name: string; credits: number };
+
+export default function Semester({ season, year, onCreditsChange, onDelete, onCourseChange, presetCourseCodes, onSnapshot }: { season: string; year: number; onCreditsChange?: (total: number) => void; onDelete?: () => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void; presetCourseCodes?: string[]; onSnapshot?: (courses: SnapshotCourse[]) => void }) {
+	// start with 4 blank course cells
 	const [cells, setCells] = useState<number[]>([0, 1, 2, 3]);
-	// track credits for each cell by id
+	// map of cell id -> credits
 	const [credits, setCredits] = useState<Record<number, number | null>>({ 0: null, 1: null, 2: null, 3: null });
-	// track selected course code per cell
+	// map of cell id -> course code string
 	const [codes, setCodes] = useState<Record<number, string | null>>({ 0: null, 1: null, 2: null, 3: null });
 
-	// helper to get next cell id
-	const getNextId = (list: number[]) => (list.length === 0 ? 0 : list[list.length - 1] + 1);
+    // find the next id number to use
+    const getNextId = (list: number[]) => (list.length === 0 ? 0 : list[list.length - 1] + 1);
 
-	// helper to compute total credits from a list of cell ids
-	const computeTotal = (ids: number[], creditMap: Record<number, number | null>) => {
-		let sum = 0;
-		for (let i = 0; i < ids.length; i++) {
-			const id = ids[i];
-			sum += creditMap[id] ?? 0;
-		}
-		return sum;
-	};
+    // sum up credits for given ids
+    const computeTotal = (ids: number[], creditMap: Record<number, number | null>) => {
+      let sum = 0;
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        sum += creditMap[id] ?? 0;
+      }
+      return sum;
+    };
 
-	// when a preset course list is provided, expand to that size so we can render all items
+	// if parent passes preset course list, make sure we have enough cells
 	useEffect(() => {
 		if (!presetCourseCodes || presetCourseCodes.length === 0) return;
 		setCells((prev) => {
@@ -43,7 +48,7 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 		});
 	}, [presetCourseCodes]);
 
-	// notify parent to decrement any selected codes in this semester
+	// when the semester unmounts, remove all its selected courses from counts
 	useEffect(() => {
 		return () => {
 			if (onCourseChange) {
@@ -54,7 +59,7 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 		};
 	}, []);
 
-	// function to add a new course cell
+	// add a new empty course cell
 	const addCourse = () => {
 		setCells((prev) => {
 			const nextId = (prev.at(-1) ?? -1) + 1;
@@ -64,7 +69,7 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 		});
 	};
 
-	// function to delete a course cell
+	// delete a course cell and clean up its code/credits
 	const deleteCourse = (cellId: number) => {
 		setCells((prev) => prev.filter((id) => id !== cellId));
 		setCredits((c) => {
@@ -84,13 +89,37 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 		}
 	};
 
-	// report credit changes whenever total changes
+	// let parent know our total credits each time they change
 	const total = computeTotal(cells, credits);
 	useEffect(() => {
 		onCreditsChange?.(total);
 	}, [total]);
 
-	// Check if this is a Winter or Summer semester
+	// build list of selected courses for export whenever codes change
+	useEffect(() => {
+		if (!onSnapshot) return;
+		const selected: SnapshotCourse[] = [];
+		// preserve visual order by iterating cells array
+		for (let i = 0; i < cells.length; i++) {
+			const id = cells[i];
+			const code = codes[id];
+			if (!code) continue;
+			// find in course catalog
+			const match = (courses as any[]).find(
+				(c) => String(c.code).toUpperCase() === String(code).toUpperCase()
+			);
+			if (match) {
+				selected.push({ code: match.code as string, name: match.name as string, credits: (match.credits as number) ?? 0 });
+			} else {
+				// fallback if not found (shouldn't generally happen)
+				selected.push({ code: String(code), name: String(code), credits: 0 });
+			}
+		}
+		onSnapshot(selected);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [codes, cells]);
+
+	// show delete button for optional semesters
 	const isOptionalSemester = season === "Winter" || season === "Summer";
 	return (
 		<div

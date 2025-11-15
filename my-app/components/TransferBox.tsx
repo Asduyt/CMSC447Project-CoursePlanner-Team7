@@ -1,10 +1,13 @@
 "use client";
 
+// TransferBox lets the user add courses they are bringing in from other schools.
+// It also has a lookup for Maryland Community College transfers.
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 type MdRow = { course: string; credits: number | null; transfersAs: string };
 
 // supported Maryland Community Colleges in the ARTSYS website
+// List of supported Maryland community colleges (id from ARTSYS site)
 const MARYLAND_SCHOOLS: { id: number; name: string }[] = [
   { id: 1725, name: "Allegany College of Maryland"},
   { id: 1726, name: "Anne Arundel Community College"},
@@ -24,7 +27,7 @@ const MARYLAND_SCHOOLS: { id: number; name: string }[] = [
   { id: 1792, name: "Wor-Wic Community College"},
 ];
 
-export default function TransferBox({ onDelete, onCreditsChange }: { onDelete?: () => void; onCreditsChange?: (total: number) => void }) {
+export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChange }: { id: number; onDelete?: () => void; onCreditsChange?: (total: number) => void; onRowsChange?: (id: number, rows: { id: number; transferTo: string; course: string; credits: string }[]) => void }) {
   // small css helpers to keep JSX simple and readable
   const styles: Record<string, CSSProperties> = {
     card: {
@@ -110,36 +113,43 @@ export default function TransferBox({ onDelete, onCreditsChange }: { onDelete?: 
     },
   };
   // Each transfer row stores its own id, selected target university, and the typed course name
+  // each row is one transfer course line
   const [rows, setRows] = useState<{ id: number; transferTo: string; course: string; credits: string }[]>([
     { id: 0, transferTo: "", course: "", credits: "" },
     { id: 1, transferTo: "", course: "", credits: "" },
   ]);
 
-  const addCourse = () =>
-    setRows((prev) => [...prev, { id: (prev.at(-1)?.id ?? -1) + 1, transferTo: "", course: "", credits: "" }]);
+  // add a blank transfer row
+  const addCourse = () => setRows((prev) => [...prev, { id: (prev.at(-1)?.id ?? -1) + 1, transferTo: "", course: "", credits: "" }]);
 
+  // delete a transfer row
   const deleteCourse = (id: number) => setRows((prev) => prev.filter((x) => x.id !== id));
 
+  // change the "transfer from" selection
   const setTransferTarget = (id: number, value: string) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, transferTo: value } : r)));
   };
 
-  const setCourseValue = (id: number, value: string) =>
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, course: value } : r)));
+  // change the course text
+  const setCourseValue = (id: number, value: string) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, course: value } : r)));
 
-  const setCreditsValue = (id: number, value: string) =>
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, credits: value } : r)));
+  // change the credits number
+  const setCreditsValue = (id: number, value: string) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, credits: value } : r)));
 
   const universities = ["UMBC", "Towson University", "Johns Hopkins University", "Community College", "Other"];
 
   // compute credits
-  const creditTotal = useMemo(() => {
-    return rows.reduce((sum, r) => sum + (parseFloat(r.credits) || 0), 0);
-  }, [rows]);
+  // total credits from all transfer rows
+  const creditTotal = useMemo(() => rows.reduce((sum, r) => sum + (parseFloat(r.credits) || 0), 0), [rows]);
   // report the credits to parent whenever the total changes since when they add it, we need to keep track
   useEffect(() => {
     onCreditsChange?.(creditTotal);
   }, [creditTotal]);
+
+  // report rows to parent for export snapshots whenever rows change
+  useEffect(() => {
+    onRowsChange?.(id, rows);
+  }, [rows, id]);
 
   // maryland CC modal state
   const [mdOpen, setMdOpen] = useState(false);
@@ -154,6 +164,7 @@ export default function TransferBox({ onDelete, onCreditsChange }: { onDelete?: 
   const mdCountSelected = selectedRows.length;
 
   // run the lookup against our API
+  // run community college lookup (hits our API route)
   async function runMdLookup() {
     try {
       setMdLoading(true);
@@ -186,11 +197,13 @@ export default function TransferBox({ onDelete, onCreditsChange }: { onDelete?: 
   }
 
   // Toggle selection of a result row by index
+  // select/unselect a result row
   function toggleRow(i: number) {
     setSelectedRows((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
   }
 
   // when we choose a class, we need to add have it "copy over" and paste into our schedule
+  // copy selected lookup rows into main transfer rows
   function addSelectedToSchedule() {
   const schoolName = MARYLAND_SCHOOLS.find((s) => s.id === mdSchool)?.name ?? "Maryland CC";
   const chosen = mdRows.filter((_, i) => selectedRows.includes(i)).filter((r) => !!r.transfersAs);

@@ -1,15 +1,23 @@
 "use client";
 
+// Main planner page. Simple comments explain each part.
 import { useMemo, useState } from "react";
+import { computeRequirementsSummary } from "@/lib/requirementsSummary";
 import ThemeToggle from "@/components/ThemeToggle";
 import Year from "@/components/Year";
 import TransferBox from "@/components/TransferBox";
 import RequirementsSidebar from "@/components/RequirementsSidebar";
 
 export default function Home() {
+  // used to force re-render of children on clear
   const [resetCount, setResetCount] = useState(0);
-  const [showTransfers, setShowTransfers] = useState<number[]>([]);
+  // list of transfer box ids
+  const [transferIds, setTransferIds] = useState<number[]>([]);
+  // if true we add suggested courses automatically
   const [prefillOn, setPrefillOn] = useState(false);
+  // Snapshots for export: per-semester planned courses and per-transfer-box rows
+  const [semesterSnapshots, setSemesterSnapshots] = useState<Record<string, { code: string; name: string; credits: number }[]>>({});
+  const [transferSnapshots, setTransferSnapshots] = useState<Record<number, { id: number; transferTo: string; course: string; credits: string }[]>>({});
   
   // State for additional Winter/Summer semesters
   const [additionalSemesters, setAdditionalSemesters] = useState<{[key: string]: boolean;}>({});
@@ -19,11 +27,13 @@ export default function Home() {
   const [newSemesterType, setNewSemesterType] = useState<"Winter" | "Summer">("Winter");
   const [newSemesterYear, setNewSemesterYear] = useState(1);
 
+  // add a new transfer box with a new id number
   const addGlobalTransfer = () => {
-    setShowTransfers((prev) => [...prev, (prev.at(-1) ?? -1) + 1]);
+    setTransferIds((prev) => [...prev, (prev.at(-1) ?? -1) + 1]);
   };
+  // remove a transfer box by id
   const removeGlobalTransfer = (id: number) => {
-    setShowTransfers((prev) => prev.filter((x) => x !== id));
+    setTransferIds((prev) => prev.filter((x) => x !== id));
   };
   // track credits for transfer boxes by id
   const [transferCredits, setTransferCredits] = useState<Record<number, number>>({});
@@ -85,18 +95,19 @@ export default function Home() {
   // Track selected course codes across all semesters to drive requirements sidebar
   const [selectedCodes, setSelectedCodes] = useState<Map<string, number>>(new Map());
 
+  // update course counts when a cell changes
   const handleCourseChange = (prevCode: string | null, nextCode: string | null) => {
     setSelectedCodes((prev) => {
       const map = new Map(prev);
       const norm = (s: string) => s.replace(/\s+/g, "").toUpperCase();
       if (prevCode) {
-        const p = norm(prevCode);
-        const count = (map.get(p) ?? 0) - 1;
-        if (count <= 0) map.delete(p); else map.set(p, count);
+        const oldKey = norm(prevCode);
+        const oldCount = (map.get(oldKey) ?? 0) - 1;
+        if (oldCount <= 0) map.delete(oldKey); else map.set(oldKey, oldCount);
       }
       if (nextCode) {
-        const n = norm(nextCode);
-        map.set(n, (map.get(n) ?? 0) + 1);
+        const newKey = norm(nextCode);
+        map.set(newKey, (map.get(newKey) ?? 0) + 1);
       }
       return map;
     });
@@ -160,11 +171,13 @@ export default function Home() {
     };
   };
 
+  // clear everything back to empty
   const clearSchedule = () => {
-    // reset transfers and optional semesters
-    setShowTransfers([]);
+    setTransferIds([]);
     setTransferCredits({});
     setAdditionalSemesters({});
+  setSemesterSnapshots({});
+  setTransferSnapshots({});
     // reset selections
     setSelectedCodes(new Map());
     // reset all per-semester credits
@@ -177,16 +190,149 @@ export default function Home() {
     setPrefillOn(false);
     setResetCount((n) => n + 1);
   };
+
+  // Export helpers
+  function exportCSV() {
+    // headers
+    const rows: string[][] = [["Type","Year","Semester","Code","Name","Credits","Transfer From","Counted Courses"]];
+    // planned courses by semester in order
+    const orderSeasons = ["Fall","Winter","Spring","Summer"];
+    const semesterKeys = Object.keys(semesterSnapshots)
+      .map((k) => {
+        const [yStr, s] = k.split(":");
+        return { key: k, year: parseInt(yStr, 10), season: s };
+      })
+      .sort((a, b) => (a.year - b.year) || (orderSeasons.indexOf(a.season) - orderSeasons.indexOf(b.season)));
+    for (const { key, year, season } of semesterKeys) {
+      const list = semesterSnapshots[key] || [];
+      for (const c of list) {
+        rows.push(["Planned", String(year), season, c.code, c.name, String(c.credits ?? 0), "","" ]);
+      }
+    }
+    // transfer rows
+    const transferIds = Object.keys(transferSnapshots).map((x) => parseInt(x, 10)).sort((a,b)=>a-b);
+    for (const id of transferIds) {
+      const list = transferSnapshots[id] || [];
+      for (const r of list) {
+        if (!r.course) continue;
+        rows.push(["Transfer","","", r.course, "", r.credits || "", r.transferTo || "", ""]);
+      }
+    }
+
+    // requirements summary section (improved formatting)
+    rows.push([]); // blank line separator
+    rows.push(["Requirements Summary"]);
+    const reqSummary = computeRequirementsSummary(selectedCodes);
+    // Header for requirement details
+    rows.push(["Requirement Name","Progress","Type","Completed","Total","Counted Courses"]);
+    for (const r of reqSummary) {
+      const progress = r.type === 'credit' ? `${r.completed}/${r.total} cr (${r.percent}%)` : `${r.completed}/${r.total} (${r.percent}%)`;
+      rows.push([
+        r.name,
+        progress,
+        r.type,
+        String(r.completed),
+        String(r.total),
+        r.countedCourseCodes.join('; ')
+      ]);
+    }
+    const csv = rows.map((r) => r.map((v) => `"${(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "planner.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function exportPDF() {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF();
+    let y = 10;
+    doc.setFontSize(14);
+    doc.text("UMBC COEIT Course Planner", 10, y);
+    y += 8;
+    doc.setFontSize(11);
+    // planned courses grouped by semester
+    const orderSeasons = ["Fall","Winter","Spring","Summer"];
+    const semesterKeys = Object.keys(semesterSnapshots)
+      .map((k) => {
+        const [yStr, s] = k.split(":");
+        return { key: k, year: parseInt(yStr, 10), season: s };
+      })
+      .sort((a, b) => (a.year - b.year) || (orderSeasons.indexOf(a.season) - orderSeasons.indexOf(b.season)));
+    for (const { key, year, season } of semesterKeys) {
+      doc.text(`Year ${year} - ${season}`, 10, y);
+      y += 6;
+      const list = semesterSnapshots[key] || [];
+      for (const c of list) {
+        doc.text(`- ${c.code} ${c.name} (${c.credits} cr)`, 14, y);
+        y += 6;
+        if (y > 280) { doc.addPage(); y = 10; }
+      }
+      y += 4;
+      if (y > 280) { doc.addPage(); y = 10; }
+    }
+    // transfers
+  doc.text("Transfers", 10, y);
+    y += 6;
+    const transferIds = Object.keys(transferSnapshots).map((x) => parseInt(x, 10)).sort((a,b)=>a-b);
+    for (const id of transferIds) {
+      const list = transferSnapshots[id] || [];
+      for (const r of list) {
+        if (!r.course) continue;
+        const line = `- ${r.course}${r.credits ? ` (${r.credits} cr)` : ""}${r.transferTo ? ` from ${r.transferTo}` : ""}`;
+        doc.text(line, 14, y);
+        y += 6;
+        if (y > 280) { doc.addPage(); y = 10; }
+      }
+    }
+    // Requirements section
+    if (y > 260) { doc.addPage(); y = 10; }
+    doc.setFontSize(13);
+    doc.text("Requirements", 10, y);
+    y += 6;
+    doc.setFontSize(10);
+    const reqSummary = computeRequirementsSummary(selectedCodes);
+    for (const r of reqSummary) {
+      const progress = r.type === 'credit' ? `${r.completed}/${r.total} cr (${r.percent}%)` : `${r.completed}/${r.total} (${r.percent}%)`;
+      // Bold requirement name + progress
+      doc.setFont('helvetica','bold');
+      const headerLine = `${r.name}: ${progress}`;
+      const headerSplit = doc.splitTextToSize(headerLine, 190);
+      for (const part of headerSplit) {
+        doc.text(part, 12, y);
+        y += 5;
+        if (y > 280) { doc.addPage(); y = 10; doc.setFontSize(10); }
+      }
+      // Normal font for counted courses if any
+      doc.setFont('helvetica','normal');
+      if (r.countedCourseCodes.length) {
+        const counted = `Counted: ${r.countedCourseCodes.join(', ')}`;
+        const countedSplit = doc.splitTextToSize(counted, 186);
+        for (const part of countedSplit) {
+          doc.text(part, 14, y);
+          y += 5;
+          if (y > 280) { doc.addPage(); y = 10; doc.setFontSize(10); }
+        }
+      }
+      y += 2;
+      if (y > 280) { doc.addPage(); y = 10; doc.setFontSize(10); }
+    }
+
+    doc.save("planner.pdf");
+  }
   
   return (
     // the main page layout
     <div className="font-sans grid grid-rows-[auto_1fr_auto] items-center justify-items-center min-h-screen p-8 pb-20 gap-8 sm:p-20">
       <header className="row-start-1 w-full flex justify-center">
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          {/* header bar with the title + theme toggle */}
+          {/* title and dark/light mode toggle */}
           <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>UMBC COEIT Course Planner</h1>
           <ThemeToggle />
-          {/* prefill button that allows you to prefill the planner with suggested courses from the pathways website */}
+          {/* turn on/off suggested courses */}
           <button
             onClick={() => setPrefillOn((v) => !v)}
             style={{
@@ -198,6 +344,31 @@ export default function Home() {
               cursor: "pointer",
             }}
           > Prefill Pathways 
+          </button>
+          {/* Export buttons */}
+          <button
+            onClick={exportCSV}
+            style={{
+              background: "var(--surface)",
+              color: "var(--foreground)",
+              border: "1px solid var(--border)",
+              padding: "6px 10px",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          > Export CSV
+          </button>
+          <button
+            onClick={exportPDF}
+            style={{
+              background: "var(--surface)",
+              color: "var(--foreground)",
+              border: "1px solid var(--border)",
+              padding: "6px 10px",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          > Export PDF
           </button>
           <button
             onClick={clearSchedule}
@@ -211,7 +382,7 @@ export default function Home() {
             }}
           > Clear Schedule
           </button>
-              {/* Global Transfer button (adds a transfer box above Year 1) */}
+              {/* add a new transfer box */}
               <button
                 onClick={addGlobalTransfer}
                 style={{
@@ -226,7 +397,7 @@ export default function Home() {
                 Add Transfer
               </button>
               
-              {/* Add Winter/Summer Semester button */}
+              {/* open modal to add winter/summer */}
               <button
                 onClick={() => setShowAddSemesterModal(true)}
                 style={{
@@ -243,7 +414,7 @@ export default function Home() {
           
         </div>
       </header>
-      {/* all the semesters layout page */}
+  {/* main content with transfers, years and requirements */}
       <main className="row-start-2 w-full" style={{ display: "flex", justifyContent: "center" }}>
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start", width: "100%", maxWidth: 1400 }}>
           <div
@@ -260,12 +431,18 @@ export default function Home() {
           >
           {/* for now, i just copied and pasted and just changed the year, in the future i'll prob change this to be a loop */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-            {showTransfers.map((id) => (
+            {transferIds.map((id) => (
               <TransferBox
                 key={id}
+                id={id}
                 onDelete={() => {
                   {/* new section for the credits */}
                   setTransferCredits((prev) => {
+                    const copy = { ...prev };
+                    delete copy[id];
+                    return copy;
+                  });
+                  setTransferSnapshots((prev) => {
                     const copy = { ...prev };
                     delete copy[id];
                     return copy;
@@ -275,6 +452,7 @@ export default function Home() {
                 onCreditsChange={(t) =>
                   setTransferCredits((prev) => (prev[id] === t ? prev : { ...prev, [id]: t }))
                 }
+                onRowsChange={(boxId, rows) => setTransferSnapshots((prev) => ({ ...prev, [boxId]: rows }))}
               />
             ))}
           </div>
@@ -295,6 +473,9 @@ export default function Home() {
                 onRemoveWinter={() => removeSemester("Winter", yr)}
                 onRemoveSummer={() => removeSemester("Summer", yr)}
                 onCourseChange={handleCourseChange}
+                onSemesterSnapshot={(year, season, courses) =>
+                  setSemesterSnapshots((prev) => ({ ...prev, [`${year}:${season}`]: courses }))
+                }
               />
             </div>
           ))}
