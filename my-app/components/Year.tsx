@@ -22,7 +22,8 @@ type YearProps = {
     summer?: string[];
   };
   onCourseChange?: (prevCode: string | null, nextCode: string | null) => void;
-  onSemesterSnapshot?: (year: number, season: string, courses: { code: string; name: string; credits: number }[]) => void;
+  // snapshot now can include grade
+  onSemesterSnapshot?: (year: number, season: string, courses: { code: string; name: string; credits: number; grade?: string | null }[]) => void;
 };
 
 export default function Year({

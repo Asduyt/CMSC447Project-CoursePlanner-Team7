@@ -16,8 +16,10 @@ export default function Home() {
   // if true we add suggested courses automatically
   const [prefillOn, setPrefillOn] = useState(false);
   // Snapshots for export: per-semester planned courses and per-transfer-box rows
-  const [semesterSnapshots, setSemesterSnapshots] = useState<Record<string, { code: string; name: string; credits: number }[]>>({});
-  const [transferSnapshots, setTransferSnapshots] = useState<Record<number, { id: number; transferTo: string; course: string; credits: string }[]>>({});
+  // semester snapshots now include optional grade per course
+  const [semesterSnapshots, setSemesterSnapshots] = useState<Record<string, { code: string; name: string; credits: number; grade?: string | null }[]>>({});
+  // transfer snapshots now can include optional grade
+  const [transferSnapshots, setTransferSnapshots] = useState<Record<number, { id: number; transferTo: string; course: string; credits: string; grade?: string | null }[]>>({});
   
   // State for additional Winter/Summer semesters
   const [additionalSemesters, setAdditionalSemesters] = useState<{[key: string]: boolean;}>({});
@@ -194,7 +196,7 @@ export default function Home() {
   // Export helpers
   function exportCSV() {
     // headers
-    const rows: string[][] = [["Type","Year","Semester","Code","Name","Credits","Transfer From","Counted Courses"]];
+  const rows: string[][] = [["Type","Year","Semester","Code","Name","Credits","Grade","Transfer From","Counted Courses"]];
     // planned courses by semester in order
     const orderSeasons = ["Fall","Winter","Spring","Summer"];
     const semesterKeys = Object.keys(semesterSnapshots)
@@ -206,7 +208,7 @@ export default function Home() {
     for (const { key, year, season } of semesterKeys) {
       const list = semesterSnapshots[key] || [];
       for (const c of list) {
-        rows.push(["Planned", String(year), season, c.code, c.name, String(c.credits ?? 0), "","" ]);
+  rows.push(["Planned", String(year), season, c.code, c.name, String(c.credits ?? 0), c.grade ? String(c.grade) : "", "", "" ]);
       }
     }
     // transfer rows
@@ -215,7 +217,7 @@ export default function Home() {
       const list = transferSnapshots[id] || [];
       for (const r of list) {
         if (!r.course) continue;
-        rows.push(["Transfer","","", r.course, "", r.credits || "", r.transferTo || "", ""]);
+        rows.push(["Transfer","","", r.course, "", r.credits || "", r.grade ? r.grade : "", r.transferTo || "", ""]);
       }
     }
 
@@ -224,7 +226,7 @@ export default function Home() {
     rows.push(["Requirements Summary"]);
     const reqSummary = computeRequirementsSummary(selectedCodes);
     // Header for requirement details
-    rows.push(["Requirement Name","Progress","Type","Completed","Total","Counted Courses"]);
+  rows.push(["Requirement Name","Progress","Type","Completed","Total","Counted Courses"]);
     for (const r of reqSummary) {
       const progress = r.type === 'credit' ? `${r.completed}/${r.total} cr (${r.percent}%)` : `${r.completed}/${r.total} (${r.percent}%)`;
       rows.push([
@@ -267,7 +269,8 @@ export default function Home() {
       y += 6;
       const list = semesterSnapshots[key] || [];
       for (const c of list) {
-        doc.text(`- ${c.code} ${c.name} (${c.credits} cr)`, 14, y);
+        const gradePart = c.grade ? ` | Grade: ${c.grade}` : "";
+        doc.text(`- ${c.code} ${c.name} (${c.credits} cr${gradePart})`, 14, y);
         y += 6;
         if (y > 280) { doc.addPage(); y = 10; }
       }
@@ -282,7 +285,8 @@ export default function Home() {
       const list = transferSnapshots[id] || [];
       for (const r of list) {
         if (!r.course) continue;
-        const line = `- ${r.course}${r.credits ? ` (${r.credits} cr)` : ""}${r.transferTo ? ` from ${r.transferTo}` : ""}`;
+        const gradePart = r.grade ? ` | Grade: ${r.grade}` : "";
+        const line = `- ${r.course}${r.credits ? ` (${r.credits} cr)` : ""}${r.transferTo ? ` from ${r.transferTo}` : ""}${gradePart}`;
         doc.text(line, 14, y);
         y += 6;
         if (y > 280) { doc.addPage(); y = 10; }

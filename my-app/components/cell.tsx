@@ -3,9 +3,11 @@
 // Simple course selection cell.
 // You can type a course or pick from the dropdown.
 import { useState, useRef, useEffect } from "react";
-import courses from "@/data/courses.json";
+import courses from "@/data/courses.json"; // the big list of courses we can pick from
 
-export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void; presetCourse?: { code: string; name: string; credits: number } | null }) {
+// This component lets the user pick a course and (optionally) a grade.
+// It tells parent when the course or grade changes.
+export default function Cell({ onDelete, onChange, onGradeChange, presetCourse, grade }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void; onGradeChange?: (grade: string | null) => void; presetCourse?: { code: string; name: string; credits: number } | null; grade?: string | null }) {
   // current text inside the input
   const [value, setValue] = useState("");
   // whether dropdown list is open
@@ -14,11 +16,14 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   // selected course object
   const [selected, setSelected] = useState<{ code: string; name: string; credits: number } | null>(null);
+  // local grade state mirrors prop (so parent controls snapshot). We keep it simple.
+  // grade picked in the little dropdown (we keep local + inform parent)
+  const [localGrade, setLocalGrade] = useState<string | null>(grade ?? null);
   // refs to help with click outside and scrolling
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
 
-  // scroll highlighted item into view
+  // scroll highlighted item into view so keyboard navigation feels nicer
   useEffect(() => {
     if (!listRef.current || highlightedIndex === null) return;
     const indexInChildren = highlightedIndex >= 0 ? highlightedIndex + 1 : 0;
@@ -38,7 +43,7 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // preset course auto-select
+  // if a preset course is given we auto-fill it once
   useEffect(() => {
     if (!presetCourse) return;
     if (selected && selected.code === presetCourse.code) return;
@@ -47,7 +52,12 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
     onChange?.(presetCourse);
   }, [presetCourse?.code, presetCourse?.name, presetCourse?.credits]);
 
-  // filter list based on value typed
+  // if parent changes the grade prop we copy it in
+  useEffect(() => {
+    setLocalGrade(grade ?? null);
+  }, [grade]);
+
+  // figure out which courses match what user typed
   const filtered = courses.filter((c) => `${c.code} ${c.name}`.toLowerCase().includes(value.toLowerCase()));
 
   return (
@@ -62,6 +72,8 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
               setSelected(null);
               setOpen(false);
               onChange?.(null);
+              setLocalGrade(null);
+              onGradeChange?.(null);
               onDelete();
             }}
             style={{
@@ -77,7 +89,7 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
             aria-label="Delete course"
           >×</button>
         )}
-        <div ref={wrapperRef} className="relative" style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+  <div ref={wrapperRef} className="relative" style={{ display: 'flex', alignItems: 'center', width: '100%', flex: 1, minWidth: 0 }}>
           <input
             value={value}
             placeholder="Select or type a course"
@@ -126,6 +138,7 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
                     setValue(`${chosen.code} ${chosen.name}`);
                     setSelected(chosen);
                     onChange?.(chosen);
+                    // keep grade but do nothing; user can choose after selecting
                   }
                   setOpen(false);
                 }
@@ -201,6 +214,8 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
                   setValue("");
                   setSelected(null);
                   onChange?.(null);
+                  setLocalGrade(null);
+                  onGradeChange?.(null);
                   setOpen(false);
                 }}
                 className="cursor-pointer rounded px-2 py-1"
@@ -232,6 +247,37 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
             </ul>
           )}
         </div>
+        {/* grade selector back on the right; wrapper flex:1 keeps input wide */}
+        {selected && (
+          <select
+            value={localGrade ?? ''}
+            onChange={(e) => {
+              const val = e.target.value || null;
+              setLocalGrade(val);
+              onGradeChange?.(val);
+            }}
+            style={{
+              marginLeft: 6,
+              background: 'var(--surface)',
+              color: 'var(--foreground)',
+              border: '1px solid var(--border)',
+              padding: '4px 6px',
+              fontSize: 12,
+              borderRadius: 4,
+              flexShrink: 0
+            }}
+            aria-label="Select grade"
+          >
+            <option value="">Grade</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+            <option value="D">D</option>
+            <option value="E">E</option>
+            <option value="F">F</option>
+            <option value="W">W</option>
+          </select>
+        )}
       </div>
     </div>
   );
