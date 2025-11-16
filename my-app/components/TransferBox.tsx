@@ -27,7 +27,8 @@ const MARYLAND_SCHOOLS: { id: number; name: string }[] = [
   { id: 1792, name: "Wor-Wic Community College"},
 ];
 
-export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChange }: { id: number; onDelete?: () => void; onCreditsChange?: (total: number) => void; onRowsChange?: (id: number, rows: { id: number; transferTo: string; course: string; credits: string }[]) => void }) {
+// We now add an optional grade per transfer course (same letter list as planner cells).
+export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChange }: { id: number; onDelete?: () => void; onCreditsChange?: (total: number) => void; onRowsChange?: (id: number, rows: { id: number; transferTo: string; course: string; credits: string; grade?: string | null }[]) => void }) {
   // small css helpers to keep JSX simple and readable
   const styles: Record<string, CSSProperties> = {
     card: {
@@ -114,13 +115,13 @@ export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChang
   };
   // Each transfer row stores its own id, selected target university, and the typed course name
   // each row is one transfer course line
-  const [rows, setRows] = useState<{ id: number; transferTo: string; course: string; credits: string }[]>([
-    { id: 0, transferTo: "", course: "", credits: "" },
-    { id: 1, transferTo: "", course: "", credits: "" },
+  const [rows, setRows] = useState<{ id: number; transferTo: string; course: string; credits: string; grade?: string | null }[]>([
+    { id: 0, transferTo: "", course: "", credits: "", grade: null },
+    { id: 1, transferTo: "", course: "", credits: "", grade: null },
   ]);
 
   // add a blank transfer row
-  const addCourse = () => setRows((prev) => [...prev, { id: (prev.at(-1)?.id ?? -1) + 1, transferTo: "", course: "", credits: "" }]);
+  const addCourse = () => setRows((prev) => [...prev, { id: (prev.at(-1)?.id ?? -1) + 1, transferTo: "", course: "", credits: "", grade: null }]);
 
   // delete a transfer row
   const deleteCourse = (id: number) => setRows((prev) => prev.filter((x) => x.id !== id));
@@ -135,6 +136,9 @@ export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChang
 
   // change the credits number
   const setCreditsValue = (id: number, value: string) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, credits: value } : r)));
+
+  // set grade (simple letter). We store as null when blank.
+  const setGradeValue = (id: number, value: string) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, grade: value || null } : r)));
 
   const universities = ["UMBC", "Towson University", "Johns Hopkins University", "Community College", "Other"];
 
@@ -220,6 +224,7 @@ export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChang
         transferTo: schoolName,
         course: r.transfersAs,
         credits: r.credits != null ? String(r.credits) : "",
+        grade: null,
       }));
       return [...prev, ...appended];
     });
@@ -268,6 +273,22 @@ export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChang
 
                 {/* credits input: small numeric field */}
                 <input type="number" inputMode="numeric" min={0} placeholder="Cr" value={row.credits} onChange={(e) => setCreditsValue(row.id, e.target.value)} style={{ ...styles.numberInput, marginLeft: 8 }} />
+                {/* grade dropdown (optional) */}
+                <select
+                  aria-label="Transfer grade"
+                  value={row.grade ?? ""}
+                  onChange={(e) => setGradeValue(row.id, e.target.value)}
+                  style={{ ...styles.select, width: 90, marginLeft: 8 }}
+                >
+                  <option value="">Grade</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                  <option value="W">W</option>
+                </select>
 
                 <button
                   type="button"
