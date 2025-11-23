@@ -6,11 +6,15 @@ import Year from "@/components/Year";
 import TransferBox from "@/components/TransferBox";
 import RequirementsSidebar from "@/components/RequirementsSidebar";
 import courses from "@/data/courses.json";
+import { computeRequirementsSummary } from "@/lib/requirementsSummary";
 
 export default function Home() {
   const [resetCount, setResetCount] = useState(0);
   const [showTransfers, setShowTransfers] = useState<number[]>([]);
   const [prefillOn, setPrefillOn] = useState(false);
+  // snapshot storage for export
+  const [semesterSnapshots, setSemesterSnapshots] = useState<Record<string, { code: string; name: string; credits: number; grade?: string | null }[]>>({});
+  const [showExportMenu, setShowExportMenu] = useState(false);
   
   // State for additional Winter/Summer semesters
   const [additionalSemesters, setAdditionalSemesters] = useState<{[key: string]: boolean;}>({});
@@ -30,7 +34,7 @@ export default function Home() {
   const [transferCredits, setTransferCredits] = useState<Record<number, number>>({});
   const totalTransferCredits = useMemo(() => Object.values(transferCredits).reduce((a, b) => a + b, 0), [transferCredits]);
   // track the actual rows of transfer items for requirement matching & credits
-  const [transferRowsByBox, setTransferRowsByBox] = useState<Record<number, { code: string; credits: number }[]>>({});
+  const [transferRowsByBox, setTransferRowsByBox] = useState<Record<number, { code: string; credits: number; transferFrom?: string }[]>>({});
   // compute extra transfer credits that don't map to a known catalog course (so they still count toward 120)
   const unmatchedTransferCredits = useMemo(() => {
     const norm = (s: string) => s.replace(/\s+/g, "").toUpperCase();
@@ -215,6 +219,7 @@ export default function Home() {
     // reset transfers and optional semesters
     setShowTransfers([]);
     setTransferCredits({});
+    setSemesterSnapshots({});
     setAdditionalSemesters({});
     // reset selections
   setSemesterCounts(new Map());
@@ -228,6 +233,175 @@ export default function Home() {
     setPrefillOn(false);
     setResetCount((n) => n + 1);
   };
+
+  // EXPORT HELPERS (simple and readable)
+  // Try to load an image from public/ and return a data URL + its natural size
+  function loadImageData(src: string): Promise<{ dataUrl: string; width: number; height: number } | null> {
+    return new Promise((resolve) => {
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return resolve(null);
+            ctx.drawImage(img, 0, 0);
+            const dataUrl = canvas.toDataURL('image/png');
+            resolve({ dataUrl, width: img.naturalWidth, height: img.naturalHeight });
+          } catch {
+            resolve(null);
+          }
+        };
+        img.onerror = () => resolve(null);
+        img.src = src;
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+
+  function exportCSV() {
+    // simple table only; include a small CSV header row with a human-readable title
+    // CSV cannot embed images, so we put a text header that appears above the table
+    // CSV header for planned courses: use full 'Credits' label
+    const rows: string[][] = [["UMBC College of Engineering and Information Technology"], [], ["Type","Year","Semester","Code","Name","Credits","Grade","Transfer From"]];
+    // planned courses by semester
+    const orderSeasons = ["Fall","Winter","Spring","Summer"];
+    const keys = Object.keys(semesterSnapshots)
+      .map((k)=>{ const [yStr, s] = k.split(":"); return { key:k, year: parseInt(yStr,10), season: s }; })
+      .sort((a,b)=> (a.year - b.year) || (orderSeasons.indexOf(a.season) - orderSeasons.indexOf(b.season)));
+    for (const { key, year, season } of keys) {
+      for (const c of semesterSnapshots[key] || []) {
+        const type = (c as any).grade ? 'completed' : 'planned';
+        rows.push([type, String(year), season, c.code, c.name, String(c.credits), (c as any).grade ?? "", ""]);
+      }
+    }
+    // transfer rows (built from what TransferBox gives parent)
+    for (const boxId in transferRowsByBox) {
+      const list = (transferRowsByBox as any)[boxId] || [];
+      for (const r of list) {
+        const code = (r.code ?? r.course ?? "");
+        const credits = (typeof r.credits === 'number') ? r.credits : parseFloat((r as any).credits || '0') || 0;
+        const from = (r as any).transferFrom || "";
+        const type = 'completed'; // transfer classes treated as completed by definition
+        // keep 8 columns: Type, Year, Semester, Code, Name, Credits, Grade, Transfer From
+        rows.push([type, "", "", String(code), String(code), String(credits), (r as any).grade ?? "", String(from)]);
+      }
+    }
+    // requirements section — ensure each requirement row has the same number of columns (8)
+    rows.push([]);
+    rows.push(["Requirements Summary"]);
+    // requirement header aligned to the main table (put labels starting at the 4th column)
+    // leave the 'Type' header blank here so the requirements section doesn't show a type label
+    rows.push(["", "", "", "REQUIREMENT NAME", "PROGRESS", "", "COMPLETED", "COUNTED COURSES"]);
+    // include unmatched transfer credits when computing requirement summaries
+    const reqSummary = computeRequirementsSummary(combinedCounts, unmatchedTransferCredits);
+    for (const r of reqSummary) {
+      const progress = r.type === 'credit' ? `${r.completed}/${r.total} cr (${r.percent}%)` : `${r.completed}/${r.total} (${r.percent}%)`;
+      const counted = r.countedCourseCodes.join('; ');
+      // keep row length at 8 columns so spreadsheet column widths align predictably
+      // leave the 'Type' column empty for the requirements summary per request
+      rows.push(["", "", "", r.name, progress, "", String(r.completed), counted]);
+    }
+    const csv = rows.map(r => r.map(v => `"${(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'planner.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function exportPDF() {
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF();
+    // We'll place the logo at the top-right and make it a bit larger.
+    let y = 10;
+    const logo = await loadImageData('/umbc-logo.png');
+    if (logo) {
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 10;
+      // target height (in PDF units) to make the logo bigger than before
+      const targetH = 24; // larger than previous 16
+      const scale = targetH / Math.max(1, logo.height);
+      const w = Math.max(1, logo.width * scale);
+      const h = Math.max(1, logo.height * scale);
+      // place at right edge: x = pageWidth - margin - w
+      const x = Math.max(margin, pageWidth - margin - w);
+
+      // Text to the left of the logo (vertically centered with the logo)
+      const titleText = 'UMBC College of Engineering and Information Technology';
+      // larger bold font for the header title next to the logo
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      // Compute the maximum width available for the text before the logo
+      const maxTextWidth = Math.max(20, x - margin - 8);
+      const titleLines = doc.splitTextToSize(titleText, maxTextWidth);
+      // draw lines vertically centered relative to the logo box
+      const lineHeight = 6; // line height adjusted for larger font
+      let textStartY = y + Math.max(0, (h - titleLines.length * lineHeight) / 2) + lineHeight;
+      for (const line of titleLines) {
+        doc.text(line, margin, textStartY);
+        textStartY += lineHeight;
+      }
+
+      // add the logo on the right
+      doc.addImage(logo.dataUrl, 'PNG', x, y, w, h);
+      // switch back to normal for the rest of the document
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+      // keep y below the logo for following content
+      y += h + 6;
+    } else {
+      // Fallback title if image not present
+      doc.setFontSize(14);
+      doc.text('UMBC — College of Engineering and Information Technology', 10, y);
+      y += 8;
+    }
+    doc.setFontSize(11);
+    const orderSeasons = ["Fall","Winter","Spring","Summer"];
+    const keys = Object.keys(semesterSnapshots)
+      .map((k)=>{ const [yStr, s] = k.split(":"); return { key:k, year: parseInt(yStr,10), season: s }; })
+      .sort((a,b)=> (a.year - b.year) || (orderSeasons.indexOf(a.season) - orderSeasons.indexOf(b.season)));
+    for (const { key, year, season } of keys) {
+      doc.setFont('helvetica','bold');
+      doc.text(`Year ${year} - ${season}`,10,y);
+      doc.setFont('helvetica','normal');
+      y+=6;
+      for (const c of semesterSnapshots[key] || []) {
+        const gradeText = c.grade ? ` — Grade: ${c.grade}` : '';
+        doc.text(`- ${c.code} ${c.name} (${c.credits} cr)${gradeText}`,14,y);
+        y+=6; if (y>280){ doc.addPage(); y=10; doc.setFontSize(11);} 
+      }
+      y+=4; if (y>280){ doc.addPage(); y=10; doc.setFontSize(11);} }
+  doc.setFont('helvetica','bold');
+  doc.text('Transfers',10,y); y+=6;
+  doc.setFont('helvetica','normal');
+    for (const boxId in transferRowsByBox) {
+      const list = (transferRowsByBox as any)[boxId] || [];
+      for (const r of list) {
+        const code = (r.code ?? r.course ?? "");
+        const credits = (typeof r.credits === 'number') ? r.credits : parseFloat((r as any).credits || '0') || 0;
+        const from = (r as any).transferFrom ? ` — from ${(r as any).transferFrom}` : '';
+        doc.text(`- ${String(code)} (${credits} cr)${from}`,14,y); y+=6; if (y>280){ doc.addPage(); y=10; doc.setFontSize(11);} }
+    }
+    if (y>260){ doc.addPage(); y=10; }
+    doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.text('Requirements',10,y); y+=6; doc.setFontSize(10); doc.setFont('helvetica','normal');
+    const reqSummary = computeRequirementsSummary(combinedCounts, unmatchedTransferCredits);
+    for (const r of reqSummary) {
+      const progress = r.type === 'credit' ? `${r.completed}/${r.total} cr (${r.percent}%)` : `${r.completed}/${r.total} (${r.percent}%)`;
+      doc.setFont('helvetica','bold');
+      const header = doc.splitTextToSize(`${r.name}: ${progress}`, 190);
+      for (const part of header) { doc.text(part,12,y); y+=5; if (y>280){ doc.addPage(); y=10; doc.setFontSize(10);} }
+      doc.setFont('helvetica','normal');
+      if (r.countedCourseCodes.length) {
+        const counted = doc.splitTextToSize(`Counted: ${r.countedCourseCodes.join(', ')}`, 186);
+        for (const part of counted) { doc.text(part,14,y); y+=5; if (y>280){ doc.addPage(); y=10; doc.setFontSize(10);} }
+      }
+      y+=2; if (y>280){ doc.addPage(); y=10; doc.setFontSize(10);} }
+    doc.save('planner.pdf');
+  }
   
   return (
     // the main page layout
@@ -291,6 +465,68 @@ export default function Home() {
               >
                 + Winter/Summer
               </button>
+              {/* Export menu next to + Winter/Summer */}
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <button
+                  onClick={() => setShowExportMenu((v) => !v)}
+                  style={{
+                    background: "var(--surface)",
+                    color: "var(--foreground)",
+                    border: "1px solid var(--border)",
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                  }}
+                >
+                  Export
+                </button>
+                {showExportMenu && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 'calc(100% + 6px)',
+                      background: 'var(--surface)',
+                      color: 'var(--foreground)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                      minWidth: 160,
+                      zIndex: 1000,
+                    }}
+                    onMouseLeave={() => setShowExportMenu(false)}
+                  >
+                    <button
+                      onClick={() => { setShowExportMenu(false); exportCSV(); }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        color: 'inherit',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Download CSV
+                    </button>
+                    <button
+                      onClick={async () => { setShowExportMenu(false); await exportPDF(); }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        color: 'inherit',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Download PDF
+                    </button>
+                  </div>
+                )}
+              </div>
           
         </div>
       </header>
@@ -356,6 +592,7 @@ export default function Home() {
                 onRemoveWinter={() => removeSemester("Winter", yr)}
                 onRemoveSummer={() => removeSemester("Summer", yr)}
                 onCourseChange={handleCourseChange}
+                onSemesterSnapshot={(year, season, list) => setSemesterSnapshots((prev) => ({ ...prev, [`${year}:${season}`]: list }))}
               />
             </div>
           ))}
