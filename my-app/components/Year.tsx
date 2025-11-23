@@ -20,6 +20,7 @@ type YearProps = {
     summer?: string[];
   };
   onCourseChange?: (prevCode: string | null, nextCode: string | null) => void;
+  onSemesterSnapshot?: (year: number, season: string, courses: { code: string; name: string; credits: number; grade?: string | null }[]) => void;
 };
 
 export default function Year({
@@ -35,6 +36,7 @@ export default function Year({
   onSummerCreditsChange,
   presets,
   onCourseChange,
+  onSemesterSnapshot,
 }: YearProps) {
   return (
     <div>
@@ -44,13 +46,13 @@ export default function Year({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Semester season="Fall" year={year} onCreditsChange={onFallCreditsChange} onCourseChange={onCourseChange} presetCourseCodes={presets?.fall} />
+  <Semester season="Fall" year={year} onCreditsChange={onFallCreditsChange} onCourseChange={onCourseChange} presetCourseCodes={presets?.fall} onSnapshot={(list)=>onSemesterSnapshot?.(year, "Fall", list)} />
         {hasWinter && (
-          <Semester season="Winter" year={year} onCreditsChange={onWinterCreditsChange} onDelete={onRemoveWinter} onCourseChange={onCourseChange} presetCourseCodes={presets?.winter} />
+          <Semester season="Winter" year={year} onCreditsChange={onWinterCreditsChange} onDelete={onRemoveWinter} onCourseChange={onCourseChange} presetCourseCodes={presets?.winter} onSnapshot={(list)=>onSemesterSnapshot?.(year, "Winter", list)} />
         )}
-        <Semester season="Spring" year={year} onCreditsChange={onSpringCreditsChange} onCourseChange={onCourseChange} presetCourseCodes={presets?.spring} />
+  <Semester season="Spring" year={year} onCreditsChange={onSpringCreditsChange} onCourseChange={onCourseChange} presetCourseCodes={presets?.spring} onSnapshot={(list)=>onSemesterSnapshot?.(year, "Spring", list)} />
         {hasSummer && (
-          <Semester season="Summer" year={year} onCreditsChange={onSummerCreditsChange} onDelete={onRemoveSummer} onCourseChange={onCourseChange} presetCourseCodes={presets?.summer} />
+          <Semester season="Summer" year={year} onCreditsChange={onSummerCreditsChange} onDelete={onRemoveSummer} onCourseChange={onCourseChange} presetCourseCodes={presets?.summer} onSnapshot={(list)=>onSemesterSnapshot?.(year, "Summer", list)} />
         )}
       </div>
     </div>

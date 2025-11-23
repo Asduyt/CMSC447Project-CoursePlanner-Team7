@@ -24,7 +24,7 @@ const MARYLAND_SCHOOLS: { id: number; name: string }[] = [
   { id: 1792, name: "Wor-Wic Community College"},
 ];
 
-export default function TransferBox({ onDelete, onCreditsChange, onCourseChange, onRowsChange }: { onDelete?: () => void; onCreditsChange?: (total: number) => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void; onRowsChange?: (rows: { code: string; credits: number }[]) => void }) {
+export default function TransferBox({ onDelete, onCreditsChange, onCourseChange, onRowsChange }: { onDelete?: () => void; onCreditsChange?: (total: number) => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void; onRowsChange?: (rows: { code: string; credits: number; transferFrom?: string }[]) => void }) {
   // small css helpers to keep JSX simple and readable
   const styles: Record<string, CSSProperties> = {
     card: {
@@ -110,9 +110,9 @@ export default function TransferBox({ onDelete, onCreditsChange, onCourseChange,
     },
   };
   // Each transfer row stores its own id, selected target university, and the typed course name
-  const [rows, setRows] = useState<{ id: number; transferTo: string; course: string; credits: string }[]>([
-    { id: 0, transferTo: "", course: "", credits: "" },
-    { id: 1, transferTo: "", course: "", credits: "" },
+  const [rows, setRows] = useState<{ id: number; transferTo: string; course: string; credits: string; grade?: string | null }[]>([
+    { id: 0, transferTo: "", course: "", credits: "", grade: null },
+    { id: 1, transferTo: "", course: "", credits: "", grade: null },
   ]);
 
   // extract a basic course code like "CMSC201" from a longer string
@@ -180,6 +180,15 @@ export default function TransferBox({ onDelete, onCreditsChange, onCourseChange,
       return next;
     });
 
+  const setGradeValue = (id: number, value: string | null) =>
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, grade: value } : r)));
+
+  // Simple named handler for the grade select control
+  function handleGradeSelectChange(id: number, e: React.ChangeEvent<HTMLSelectElement>) {
+    const v = e.target.value || null;
+    setGradeValue(id, v);
+  }
+
   const universities = ["UMBC", "Towson University", "Johns Hopkins University", "UMD - College Park", "Community College", "Other"];
 
   // compute credits
@@ -197,9 +206,9 @@ export default function TransferBox({ onDelete, onCreditsChange, onCourseChange,
     if (!onRowsChange) return;
     const mapped = rows
       .filter((r) => !!r.course)
-      .map((r) => ({ code: extractCode(r.course), credits: parseFloat(r.credits) || 0 }));
+      .map((r) => ({ code: extractCode(r.course), credits: parseFloat(r.credits) || 0, transferFrom: r.transferTo || undefined, grade: r.grade ?? undefined }));
     const sig = mapped
-      .map((r) => `${String(r.code).replace(/\s+/g, "").toUpperCase()}|${r.credits || 0}`)
+      .map((r) => `${String(r.code).replace(/\s+/g, "").toUpperCase()}|${r.credits || 0}|${r.transferFrom ?? ''}|${r.grade ?? ''}`)
       .sort()
       .join("||");
     if (sig === lastRowsSigRef.current) return;
@@ -330,6 +339,18 @@ export default function TransferBox({ onDelete, onCreditsChange, onCourseChange,
 
                 {/* credits input: small numeric field */}
                 <input type="number" inputMode="numeric" min={0} placeholder="Cr" value={row.credits} onChange={(e) => setCreditsValue(row.id, e.target.value)} style={{ ...styles.numberInput, marginLeft: 8 }} />
+
+                {/* grade selector for transfer row */}
+                <select value={row.grade ?? ""} onChange={(e) => handleGradeSelectChange(row.id, e)} style={{ marginLeft: 8, borderRadius: 6, padding: "6px", background: "var(--surface)", color: "var(--foreground)", border: "1px solid var(--border)" }} aria-label="Transfer grade">
+                  <option value="">Grade</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                  <option value="W">W</option>
+                </select>
 
                 <button
                   type="button"

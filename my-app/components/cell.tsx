@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import courses from "@/data/courses.json";
 
 // This component renders a text input paired with a datalist to provide a dropdown of suggestions.
-export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void; presetCourse?: { code: string; name: string; credits: number } | null }) {
+export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void; onGradeChange?: (grade: string | null) => void; presetCourse?: { code: string; name: string; credits: number } | null }) {
 	const [value, setValue] = useState("");
 		const [open, setOpen] = useState(false);
 		const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -12,6 +12,28 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
 		const listRef = useRef<HTMLUListElement | null>(null);
 		const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 	const [selected, setSelected] = useState<{ code: string; name: string; credits: number } | null>(null);
+
+	// grade state for this cell (A,B,C,D,E,F,W or null)
+	const [grade, setGrade] = useState<string | null>(null);
+
+	// simple named handler for grade changes to keep code easy to follow
+	function handleGradeChange(e: React.ChangeEvent<HTMLSelectElement>) {
+		const value = e.target.value;
+		const v = value === "" ? null : value;
+		setGrade(v);
+		if (onGradeChange) {
+			onGradeChange(v);
+		}
+	}
+
+	// named delete handler so JSX is simple and readable
+	function handleDelete() {
+		setValue("");
+		setSelected(null);
+		setOpen(false);
+		onChange?.(null);
+		if (onDelete) onDelete();
+	}
 
 		useEffect(() => {
 				if (listRef.current && highlightedIndex !== null) {
@@ -57,14 +79,7 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
 					{onDelete && (
 						<button
 							type="button"
-							onClick={() => {
-								// clear this cell and notify parent (because when we delete we need to reset)
-								setValue("");
-								setSelected(null);
-								setOpen(false);
-								onChange?.(null);
-								onDelete();
-							}}
+							onClick={handleDelete}
 							style={{
 								background: "transparent",
 								border: "none",
@@ -213,6 +228,31 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
 					>
 						{selected ? `${selected.credits} cr` : ""}
 					</div>
+
+					{/* grade selector */}
+					<div style={{ marginLeft: 8 }}>
+						<label className="sr-only">Grade</label>
+						<select
+							value={grade ?? ""}
+							onChange={handleGradeChange}
+							style={{
+								background: "var(--surface)",
+								color: "var(--foreground)",
+								border: "1px solid var(--border)",
+								padding: "6px",
+								borderRadius: 6,
+							}}
+						>
+							<option value="">Grade</option>
+							<option value="A">A</option>
+							<option value="B">B</option>
+							<option value="C">C</option>
+							<option value="D">D</option>
+							<option value="E">E</option>
+							<option value="F">F</option>
+							<option value="W">W</option>
+						</select>
+					</div>
 					{open && (
 							<ul
 								ref={listRef}
@@ -241,9 +281,12 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
 											onMouseEnter={() => setHighlightedIndex(-1)}
 											onMouseDown={(e) => {
 												e.preventDefault();
+												// clear selection and grade in an explicit simple way
 												setValue("");
 												setSelected(null);
 												onChange?.(null);
+												setGrade(null);
+												if (onGradeChange) onGradeChange(null);
 												setOpen(false);
 											}}
 											className="cursor-pointer rounded px-2 py-1"
@@ -276,6 +319,9 @@ export default function Cell({ onDelete, onChange, presetCourse }: { onDelete?: 
 														setValue(`${c.code} ${c.name}`);
 														setSelected(c);
 														onChange?.(c);
+														// reset grade when selecting a new course (user can change it)
+														setGrade(null);
+														if (onGradeChange) onGradeChange(null);
 														setOpen(false);
 													}}
 													className={`cursor-pointer rounded px-2 py-1`}
