@@ -6,11 +6,11 @@ import courses from "@/data/courses.json";
 // This component renders a text input paired with a datalist to provide a dropdown of suggestions.
 export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void; onGradeChange?: (grade: string | null) => void; presetCourse?: { code: string; name: string; credits: number } | null }) {
 	const [value, setValue] = useState("");
-		const [open, setOpen] = useState(false);
-		const wrapperRef = useRef<HTMLDivElement | null>(null);
-		const inputRef = useRef<HTMLInputElement | null>(null);
-		const listRef = useRef<HTMLUListElement | null>(null);
-		const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+	const [open, setOpen] = useState(false);
+	const wrapperRef = useRef<HTMLDivElement | null>(null);
+	const inputRef = useRef<HTMLInputElement | null>(null);
+	const listRef = useRef<HTMLUListElement | null>(null);
+	const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 	const [selected, setSelected] = useState<{ code: string; name: string; credits: number } | null>(null);
 
 	// grade state for this cell (A,B,C,D,E,F,W or null)
@@ -36,31 +36,45 @@ export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }
 	}
 
 		useEffect(() => {
-				if (listRef.current && highlightedIndex !== null) {
-					// We render a blank option at the top, so shift index by +1 for real items.
-					const indexInChildren = highlightedIndex >= 0 ? highlightedIndex + 1 : 0;
-					const el = listRef.current.children[indexInChildren] as HTMLElement | undefined;
-					if (el) el.scrollIntoView({ block: 'nearest' });
-				}
-			}, [highlightedIndex]);
+			if (listRef.current && highlightedIndex !== null) {
+				// We render a blank option at the top, so shift index by +1 for real items.
+				const indexInChildren = highlightedIndex >= 0 ? highlightedIndex + 1 : 0;
+				const el = listRef.current.children[indexInChildren] as HTMLElement | undefined;
+				if (el) el.scrollIntoView({ block: 'nearest' });
+			}
+		}, [highlightedIndex]);
 
-			useEffect(() => {
-				function handleClickOutside(e: MouseEvent) {
-					if (!wrapperRef.current) return;
-					if (e.target instanceof Node && !wrapperRef.current.contains(e.target)) {
-						setOpen(false);
-					}
+		useEffect(() => {
+			function handleClickOutside(e: MouseEvent) {
+				if (!wrapperRef.current) return;
+				if (e.target instanceof Node && !wrapperRef.current.contains(e.target)) {
+					setOpen(false);
 				}
+			}
 
-				document.addEventListener("mousedown", handleClickOutside);
-				return () => document.removeEventListener("mousedown", handleClickOutside);
-			}, []);
+			document.addEventListener("mousedown", handleClickOutside);
+			return () => document.removeEventListener("mousedown", handleClickOutside);
+		}, []);
 
 		// add the preset course stuff
+		// we use a ref to track if we already applied this preset to avoid double-counting
+		const appliedPresetRef = useRef<string | null>(null);
+		
 		useEffect(() => {
+			// if no preset course, do nothing
 			if (!presetCourse) return;
+			
+			// if we already applied this exact preset, skip to avoid double-counting
+			const presetKey = `${presetCourse.code}-${presetCourse.name}-${presetCourse.credits}`;
+			if (appliedPresetRef.current === presetKey) return;
+			
 			// if already selected to this course, skip
 			if (selected && selected.code === presetCourse.code) return;
+			
+			// mark this preset as applied
+			appliedPresetRef.current = presetKey;
+			
+			// set the display value and selected state
 			const composed = `${presetCourse.code} ${presetCourse.name}`;
 			setValue(composed);
 			setSelected(presetCourse);

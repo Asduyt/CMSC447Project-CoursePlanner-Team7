@@ -24,7 +24,15 @@ const MARYLAND_SCHOOLS: { id: number; name: string }[] = [
   { id: 1792, name: "Wor-Wic Community College"},
 ];
 
-export default function TransferBox({ onDelete, onCreditsChange, onCourseChange, onRowsChange }: { onDelete?: () => void; onCreditsChange?: (total: number) => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void; onRowsChange?: (rows: { code: string; credits: number; transferFrom?: string }[]) => void }) {
+// type for preset/imported transfer courses
+type PresetTransfer = {
+  code: string;
+  credits: number;
+  transferFrom: string;
+  grade: string;
+};
+
+export default function TransferBox({ onDelete, onCreditsChange, onCourseChange, onRowsChange, presetTransfers }: { onDelete?: () => void; onCreditsChange?: (total: number) => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void; onRowsChange?: (rows: { code: string; credits: number; transferFrom?: string }[]) => void; presetTransfers?: PresetTransfer[] }) {
   // small css helpers to keep JSX simple and readable
   const styles: Record<string, CSSProperties> = {
     card: {
@@ -114,6 +122,43 @@ export default function TransferBox({ onDelete, onCreditsChange, onCourseChange,
     { id: 0, transferTo: "", course: "", credits: "", grade: null },
     { id: 1, transferTo: "", course: "", credits: "", grade: null },
   ]);
+
+  // handle transfer imports from csv
+  // tracks if we already applied the preset to avoid double-counting
+  const appliedPresetRef = useRef<boolean>(false);
+  
+  // when presetTransfers is provided, populate the rows
+  useEffect(() => {
+    // if no preset transfers, do nothing
+    if (!presetTransfers || presetTransfers.length === 0) {
+      return;
+    }
+    
+    // if we already applied the preset, skip it
+    if (appliedPresetRef.current) {
+      return;
+    }
+    
+    // mark as applied
+    appliedPresetRef.current = true;
+    
+    // convert preset transfers to rows format
+    const newRows: { id: number; transferTo: string; course: string; credits: string; grade?: string | null }[] = [];
+    
+    for (let i = 0; i < presetTransfers.length; i++) {
+      const preset = presetTransfers[i];
+      newRows.push({
+        id: i,
+        transferTo: preset.transferFrom || "",
+        course: preset.code || "",
+        credits: preset.credits > 0 ? String(preset.credits) : "",
+        grade: preset.grade || null,
+      });
+    }
+    
+    // set the rows
+    setRows(newRows);
+  }, [presetTransfers]);
 
   // extract a basic course code like "CMSC201" from a longer string
   function extractCode(text: string): string {

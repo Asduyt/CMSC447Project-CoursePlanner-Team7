@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Cell from "./cell";
 import courses from "@/data/courses.json";
 
@@ -16,6 +16,11 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 	const [codes, setCodes] = useState<Record<number, string | null>>({ 0: null, 1: null, 2: null, 3: null });
 	// track grade per cell (A,B,C,D,E,F,W or null)
 	const [grades, setGrades] = useState<Record<number, string | null>>({ 0: null, 1: null, 2: null, 3: null });
+	
+	// prevents the bug where deleting a cell causes another cell to get a preset
+	// for reference, when i refer to a preset here, i mean a pre-filled course that auto. appears when the planner loads
+	// We use these for when we deal with the prefill pathways or importing a csv
+	const [cellsWithPresetApplied, setCellsWithPresetApplied] = useState<Set<number>>(new Set());
 
 	// helper to get next cell id
 	const getNextId = (list: number[]) => (list.length === 0 ? 0 : list[list.length - 1] + 1);
@@ -158,8 +163,14 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 			<div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
 		{cells.map((id, index) => {
 			// find a preset course for this index (if any)
+			// BUT only if this cell hasn't already received a preset
+			// prevents the bug where deleting a cell causes another cell to get set
 			let presetCourse: { code: string; name: string; credits: number } | undefined = undefined;
-			if (presetCourseCodes && presetCourseCodes[index]) {
+			
+			// only look for a preset if this cell hasn't been given one yet
+			const cellAlreadyHadPreset = cellsWithPresetApplied.has(id);
+			
+			if (!cellAlreadyHadPreset && presetCourseCodes && presetCourseCodes[index]) {
 				const code = String(presetCourseCodes[index]);
 				for (let i = 0; i < courses.length; i++) {
 					const c = courses[i] as any;
@@ -167,6 +178,17 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 						presetCourse = { code: c.code, name: c.name, credits: c.credits as number };
 						break;
 					}
+				}
+				// mark this cell as having received a preset
+				if (presetCourse && !cellAlreadyHadPreset) {
+					// use a timeout to avoid error
+					setTimeout(() => {
+						setCellsWithPresetApplied(prev => {
+							const newSet = new Set(prev);
+							newSet.add(id);
+							return newSet;
+						});
+					}, 0);
 				}
 			}
 			return (
