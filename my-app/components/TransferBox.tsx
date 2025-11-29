@@ -1,13 +1,10 @@
 "use client";
 
-// TransferBox lets the user add courses they are bringing in from other schools.
-// It also has a lookup for Maryland Community College transfers.
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 type MdRow = { course: string; credits: number | null; transfersAs: string };
 
 // supported Maryland Community Colleges in the ARTSYS website
-// List of supported Maryland community colleges (id from ARTSYS site)
 const MARYLAND_SCHOOLS: { id: number; name: string }[] = [
   { id: 1725, name: "Allegany College of Maryland"},
   { id: 1726, name: "Anne Arundel Community College"},
@@ -27,7 +24,15 @@ const MARYLAND_SCHOOLS: { id: number; name: string }[] = [
   { id: 1792, name: "Wor-Wic Community College"},
 ];
 
-export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChange }: { id: number; onDelete?: () => void; onCreditsChange?: (total: number) => void; onRowsChange?: (id: number, rows: { id: number; transferTo: string; course: string; credits: string }[]) => void }) {
+// type for preset/imported transfer courses
+type PresetTransfer = {
+  code: string;
+  credits: number;
+  transferFrom: string;
+  grade: string;
+};
+
+export default function TransferBox({ onDelete, onCreditsChange, onCourseChange, onRowsChange, presetTransfers }: { onDelete?: () => void; onCreditsChange?: (total: number) => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void; onRowsChange?: (rows: { code: string; credits: number; transferFrom?: string }[]) => void; presetTransfers?: PresetTransfer[] }) {
   // small css helpers to keep JSX simple and readable
   const styles: Record<string, CSSProperties> = {
     card: {
@@ -113,43 +118,148 @@ export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChang
     },
   };
   // Each transfer row stores its own id, selected target university, and the typed course name
-  // each row is one transfer course line
-  const [rows, setRows] = useState<{ id: number; transferTo: string; course: string; credits: string }[]>([
-    { id: 0, transferTo: "", course: "", credits: "" },
-    { id: 1, transferTo: "", course: "", credits: "" },
+  const [rows, setRows] = useState<{ id: number; transferTo: string; course: string; credits: string; grade?: string | null }[]>([
+    { id: 0, transferTo: "", course: "", credits: "", grade: null },
+    { id: 1, transferTo: "", course: "", credits: "", grade: null },
   ]);
 
-  // add a blank transfer row
-  const addCourse = () => setRows((prev) => [...prev, { id: (prev.at(-1)?.id ?? -1) + 1, transferTo: "", course: "", credits: "" }]);
+  // handle transfer imports from csv
+  // tracks if we already applied the preset to avoid double-counting
+  const appliedPresetRef = useRef<boolean>(false);
+  
+  // when presetTransfers is provided, populate the rows
+  useEffect(() => {
+    // if no preset transfers, do nothing
+    if (!presetTransfers || presetTransfers.length === 0) {
+      return;
+    }
+    
+    // if we already applied the preset, skip it
+    if (appliedPresetRef.current) {
+      return;
+    }
+    
+    // mark as applied
+    appliedPresetRef.current = true;
+    
+    // convert preset transfers to rows format
+    const newRows: { id: number; transferTo: string; course: string; credits: string; grade?: string | null }[] = [];
+    
+    for (let i = 0; i < presetTransfers.length; i++) {
+      const preset = presetTransfers[i];
+      newRows.push({
+        id: i,
+        transferTo: preset.transferFrom || "",
+        course: preset.code || "",
+        credits: preset.credits > 0 ? String(preset.credits) : "",
+        grade: preset.grade || null,
+      });
+    }
+    
+    // set the rows
+    setRows(newRows);
+  }, [presetTransfers]);
 
-  // delete a transfer row
-  const deleteCourse = (id: number) => setRows((prev) => prev.filter((x) => x.id !== id));
+  // extract a basic course code like "CMSC201" from a longer string
+  function extractCode(text: string): string {
+    if (!text) return text as any;
+    const s = String(text).trim();
+    // consider only the part before a dash (handles if we have like "CMSC201 - Title")
+    let head = s;
+    const dashIdx = (() => {
+      const i1 = s.indexOf("-");
+      const i2 = s.indexOf("–");
+      const i3 = s.indexOf("—");
+      let idx = -1;
+      if (i1 >= 0) idx = i1;
+      if (i2 >= 0 && (idx === -1 || i2 < idx)) idx = i2;
+      if (i3 >= 0 && (idx === -1 || i3 < idx)) idx = i3;
+      return idx;
+    })();
+    if (dashIdx >= 0) head = s.slice(0, dashIdx).trim();
 
-  // change the "transfer from" selection
+    // i try spaced patterns like "CMSC 201"
+    const parts = head.split(/\s+/);
+    if (parts.length >= 2) {
+      const subj = parts[0].toUpperCase();
+      const num = parts[1].toUpperCase();
+      const subjOk = /^[A-Z]{2,6}$/.test(subj);
+      const numOk = /^(\d{3}[A-Z]?|\dXX|4XX|UL|ELECT|[A-Z]{1,3})$/.test(num);
+      if (subjOk && numOk) return `${subj}${num}`;
+    }
+    //then try unspaced patterns like "CMSC201"
+    const up = head.toUpperCase();
+    const m = /^([A-Z]{2,6})(\d{3}[A-Z]?|\dXX|4XX|UL|ELECT)$/.exec(up);
+    if (m) return `${m[1]}${m[2]}`;
+    return head;
+  }
+
+  // 
+  const addCourse = () =>
+    setRows((prev) => [...prev, { id: (prev.at(-1)?.id ?? -1) + 1, transferTo: "", course: "", credits: "" }]);
+
+  // delete a course by its internal id
+  const deleteCourse = (id: number) => {
+    setRows((prev) => {
+  const next = prev.filter((x) => x.id !== id);
+  return next;
+    });
+  };
+
+  // set transfer target university
   const setTransferTarget = (id: number, value: string) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, transferTo: value } : r)));
   };
 
-  // change the course text
-  const setCourseValue = (id: number, value: string) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, course: value } : r)));
+  // set course name value
+  const setCourseValue = (id: number, value: string) =>
+    setRows((prev) => {
+      const next = prev.map((r) => (r.id === id ? { ...r, course: value } : r));
+      return next;
+    });
 
-  // change the credits number
-  const setCreditsValue = (id: number, value: string) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, credits: value } : r)));
+  // set credits value
+  const setCreditsValue = (id: number, value: string) =>
+    setRows((prev) => {
+      const next = prev.map((r) => (r.id === id ? { ...r, credits: value } : r));
+      return next;
+    });
 
-  const universities = ["UMBC", "Towson University", "Johns Hopkins University", "Community College", "Other"];
+  const setGradeValue = (id: number, value: string | null) =>
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, grade: value } : r)));
+
+  // Simple named handler for the grade select control
+  function handleGradeSelectChange(id: number, e: React.ChangeEvent<HTMLSelectElement>) {
+    const v = e.target.value || null;
+    setGradeValue(id, v);
+  }
+
+  const universities = ["UMBC", "Towson University", "Johns Hopkins University", "UMD - College Park", "Community College", "Other"];
 
   // compute credits
-  // total credits from all transfer rows
-  const creditTotal = useMemo(() => rows.reduce((sum, r) => sum + (parseFloat(r.credits) || 0), 0), [rows]);
+  const creditTotal = useMemo(() => {
+    return rows.reduce((sum, r) => sum + (parseFloat(r.credits) || 0), 0);
+  }, [rows]);
   // report the credits to parent whenever the total changes since when they add it, we need to keep track
   useEffect(() => {
     onCreditsChange?.(creditTotal);
   }, [creditTotal]);
 
-  // report rows to parent for export snapshots whenever rows change
+  // Notify parent with normalized rows after rows change to avoid parent update during child render
+  const lastRowsSigRef = useRef<string>("");
   useEffect(() => {
-    onRowsChange?.(id, rows);
-  }, [rows, id]);
+    if (!onRowsChange) return;
+    const mapped = rows
+      .filter((r) => !!r.course)
+      .map((r) => ({ code: extractCode(r.course), credits: parseFloat(r.credits) || 0, transferFrom: r.transferTo || undefined, grade: r.grade ?? undefined }));
+    const sig = mapped
+      .map((r) => `${String(r.code).replace(/\s+/g, "").toUpperCase()}|${r.credits || 0}|${r.transferFrom ?? ''}|${r.grade ?? ''}`)
+      .sort()
+      .join("||");
+    if (sig === lastRowsSigRef.current) return;
+    lastRowsSigRef.current = sig;
+    onRowsChange(mapped);
+  }, [rows]);
 
   // maryland CC modal state
   const [mdOpen, setMdOpen] = useState(false);
@@ -164,7 +274,6 @@ export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChang
   const mdCountSelected = selectedRows.length;
 
   // run the lookup against our API
-  // run community college lookup (hits our API route)
   async function runMdLookup() {
     try {
       setMdLoading(true);
@@ -197,13 +306,11 @@ export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChang
   }
 
   // Toggle selection of a result row by index
-  // select/unselect a result row
   function toggleRow(i: number) {
     setSelectedRows((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
   }
 
   // when we choose a class, we need to add have it "copy over" and paste into our schedule
-  // copy selected lookup rows into main transfer rows
   function addSelectedToSchedule() {
   const schoolName = MARYLAND_SCHOOLS.find((s) => s.id === mdSchool)?.name ?? "Maryland CC";
   const chosen = mdRows.filter((_, i) => selectedRows.includes(i)).filter((r) => !!r.transfersAs);
@@ -213,7 +320,7 @@ export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChang
       return;
     }
     // best way that could be done...
-    setRows((prev) => {
+  setRows((prev) => {
       let nextId = (prev.at(-1)?.id ?? -1) + 1;
       const appended = chosen.map((r) => ({
         id: nextId++,
@@ -221,10 +328,19 @@ export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChang
         course: r.transfersAs,
         credits: r.credits != null ? String(r.credits) : "",
       }));
-      return [...prev, ...appended];
+      const next = [...prev, ...appended];
+      return next;
     });
 
-    setMdOpen(false);
+  // i set it so that it closes and reset the model so it starts fresh next time you want to add more transfer classes
+  setMdOpen(false);
+  setMdRows([]);
+  setSelectedRows([]);
+  setMdPrefix("");
+  setMdOldSchool("");
+  setMdSchool(5209);
+  setMdError(null);
+  setMdLoading(false);
   }
 
   return (
@@ -268,6 +384,18 @@ export default function TransferBox({ id, onDelete, onCreditsChange, onRowsChang
 
                 {/* credits input: small numeric field */}
                 <input type="number" inputMode="numeric" min={0} placeholder="Cr" value={row.credits} onChange={(e) => setCreditsValue(row.id, e.target.value)} style={{ ...styles.numberInput, marginLeft: 8 }} />
+
+                {/* grade selector for transfer row */}
+                <select value={row.grade ?? ""} onChange={(e) => handleGradeSelectChange(row.id, e)} style={{ marginLeft: 8, borderRadius: 6, padding: "6px", background: "var(--surface)", color: "var(--foreground)", border: "1px solid var(--border)" }} aria-label="Transfer grade">
+                  <option value="">Grade</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                  <option value="W">W</option>
+                </select>
 
                 <button
                   type="button"

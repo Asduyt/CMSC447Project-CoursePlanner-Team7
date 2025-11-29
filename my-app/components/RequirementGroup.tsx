@@ -19,6 +19,7 @@ export default function RequirementGroup({
   requiredCount,
   sameSubject,
   creditCap,
+  extraCreditsForThisGroup,
 }: {
   title: string;
   courses: Course[];
@@ -28,6 +29,7 @@ export default function RequirementGroup({
   requiredCount?: number;
   sameSubject?: boolean;
   creditCap?: number;
+  extraCreditsForThisGroup?: number;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -69,6 +71,11 @@ export default function RequirementGroup({
     const times = getCountFor(c.code);
     if (times > 0) totalSelectedCreditsAll += (c.credits ?? 0) * times;
   }
+  // add any extra credits that should count for this group (like transfer credits for 120 total)
+  if (typeof creditCap === 'number') {
+    const extra = extraCreditsForThisGroup ?? 0;
+    if (extra > 0) totalSelectedCreditsAll += extra;
+  }
 
   // figure out which selected courses actually count toward completion
   let visibleSelected: Course[] = [];
@@ -87,8 +94,18 @@ export default function RequirementGroup({
   } else if (sameSubject) {
     // choose the subject with the most selected courses
     const bySubject: Record<string, Course[]> = {};
+    const subjectFromCode = (code: string) => {
+    const raw = String(code || "");
+    const first = raw.split(" ")[0];
+
+    if (first && /\d/.test(first) === false) return first.toUpperCase();
+    
+    const m = /^[A-Za-z]+/.exec(raw);
+
+    return (m ? m[0] : "").toUpperCase();
+    };
     for (const c of selected) {
-      const subj = (c.code || "").split(" ")[0] || "";
+      const subj = subjectFromCode(c.code || "");
       if (!bySubject[subj]) bySubject[subj] = [];
       bySubject[subj].push(c);
     }
