@@ -7,14 +7,14 @@ import courses from "@/data/courses.json";
 // a tiny type we send upward for exporting
 type SnapshotCourse = { code: string; name: string; credits: number; grade?: string | null };
 
-export default function Semester({ season, year, onCreditsChange, onDelete, onCourseChange, presetCourseCodes, onSnapshot }: { season: string; year: number; onCreditsChange?: (total: number) => void; onDelete?: () => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void; presetCourseCodes?: string[]; onSnapshot?: (courses: SnapshotCourse[]) => void }) {
+export default function Semester({ season, year, onCreditsChange, onDelete, onCourseChange, presetCourseCodes, onSnapshot }: { season: string; year: number; onCreditsChange?: (total: number) => void; onDelete?: () => void; onCourseChange?: (prevCode: string | null, nextCode: string | null) => void; presetCourseCodes?: { code: string; grade?: string | null }[]; onSnapshot?: (courses: SnapshotCourse[]) => void }) {
 	// Start with 4 cells, allow adding more dynamically
 	const [cells, setCells] = useState<number[]>([0, 1, 2, 3]);
 	// track credits for each cell by id
 	const [credits, setCredits] = useState<Record<number, number | null>>({ 0: null, 1: null, 2: null, 3: null });
 	// track selected course code per cell
 	const [codes, setCodes] = useState<Record<number, string | null>>({ 0: null, 1: null, 2: null, 3: null });
-	// track grade per cell (A,B,C,D,E,F,W or null)
+	// track grade per cell (A,B,C,D,E,F,P or null)
 	const [grades, setGrades] = useState<Record<number, string | null>>({ 0: null, 1: null, 2: null, 3: null });
 	
 	// prevents the bug where deleting a cell causes another cell to get a preset
@@ -26,11 +26,27 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 	const getNextId = (list: number[]) => (list.length === 0 ? 0 : list[list.length - 1] + 1);
 
 	// helper to compute total credits from a list of cell ids
+	// Only count credits for courses that meet a minimum grade (C) or are Pass (P).
 	const computeTotal = (ids: number[], creditMap: Record<number, number | null>) => {
+		const gradeMeets = (grade: string | null | undefined, minGrade: string = 'C') => {
+			if (!grade) return true; // no grade -> count (user expectation)
+			const g = String(grade || '').toUpperCase();
+			if (g === 'W') return false; // withdrawal does not count
+			// Treat Pass ('P') as equivalent to a 'C' for comparisons so P counts for C-level checks
+			const gradeChar = g === 'P' ? 'C' : g[0];
+			const order = ['A','B','C','D','E','F'];
+			const gi = order.indexOf(gradeChar);
+			const mi = order.indexOf(minGrade[0]);
+			if (gi === -1 || mi === -1) return false;
+			return gi <= mi;
+		};
+
 		let sum = 0;
 		for (let i = 0; i < ids.length; i++) {
 			const id = ids[i];
-			sum += creditMap[id] ?? 0;
+			const cr = creditMap[id] ?? 0;
+			const g = grades[id];
+			if (gradeMeets(g, 'C')) sum += cr;
 		}
 		return sum;
 	};
@@ -171,7 +187,8 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 			const cellAlreadyHadPreset = cellsWithPresetApplied.has(id);
 			
 			if (!cellAlreadyHadPreset && presetCourseCodes && presetCourseCodes[index]) {
-				const code = String(presetCourseCodes[index]);
+				const entry = presetCourseCodes[index];
+				const code = String(entry.code);
 				for (let i = 0; i < courses.length; i++) {
 					const c = courses[i] as any;
 					if (String(c.code).toUpperCase() === code.toUpperCase()) {
@@ -195,9 +212,10 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 			<Cell
 				key={id}
 				onDelete={() => deleteCourse(id)}
-					onChange={(course) => handleCellChange(id, course)}
-					onGradeChange={(g) => handleCellGrade(id, g)}
-				presetCourse={presetCourse}
+							onChange={(course) => handleCellChange(id, course)}
+							onGradeChange={(g) => handleCellGrade(id, g)}
+							presetCourse={presetCourse}
+							presetGrade={presetCourseCodes && presetCourseCodes[index] ? (presetCourseCodes[index].grade ?? null) : null}
 		    />
 			);
 		})}

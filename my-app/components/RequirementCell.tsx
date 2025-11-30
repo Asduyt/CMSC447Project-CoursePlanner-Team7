@@ -9,12 +9,14 @@ type Course = {
 export default function RequirementCourse({
   course,
   completedSet,
+  completed,
 }: {
   course: Course;
   completedSet?: Set<string>;
+  completed?: boolean;
 }) {
   const key = (course.code || "").replace(/\s+/g, "").toUpperCase();
-  const isDone = !!completedSet?.has(key);
+  const isDone = typeof completed === 'boolean' ? completed : !!completedSet?.has(key);
 
   return (
     <li

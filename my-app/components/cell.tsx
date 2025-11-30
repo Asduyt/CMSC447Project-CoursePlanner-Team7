@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import courses from "@/data/courses.json";
 
 // This component renders a text input paired with a datalist to provide a dropdown of suggestions.
-export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void; onGradeChange?: (grade: string | null) => void; presetCourse?: { code: string; name: string; credits: number } | null }) {
+export default function Cell({ onDelete, onChange, onGradeChange, presetCourse, presetGrade }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void; onGradeChange?: (grade: string | null) => void; presetCourse?: { code: string; name: string; credits: number } | null; presetGrade?: string | null }) {
 	const [value, setValue] = useState("");
 	const [open, setOpen] = useState(false);
 	const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -13,7 +13,7 @@ export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }
 	const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 	const [selected, setSelected] = useState<{ code: string; name: string; credits: number } | null>(null);
 
-	// grade state for this cell (A,B,C,D,E,F,W or null)
+	// grade state for this cell (A,B,C,D,E,F,P or null)
 	const [grade, setGrade] = useState<string | null>(null);
 
 	// simple named handler for grade changes to keep code easy to follow
@@ -78,6 +78,12 @@ export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }
 			const composed = `${presetCourse.code} ${presetCourse.name}`;
 			setValue(composed);
 			setSelected(presetCourse);
+			// if an initial grade came with the preset, apply it and notify parent
+			if (presetGrade !== undefined) {
+				const g = presetGrade === "" ? null : presetGrade;
+				setGrade(g);
+				if (onGradeChange) onGradeChange(g);
+			}
 			onChange?.(presetCourse);
 		}, [presetCourse?.code, presetCourse?.name, presetCourse?.credits]);
 
@@ -132,6 +138,11 @@ export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }
 							}
 						}}
 						onClick={() => {
+							// if there is a currently selected course, highlight the input contents
+							if (selected && inputRef.current) {
+								inputRef.current.select();
+							}
+							// still toggle the dropdown as before
 							setOpen((prev) => !prev);
 							if (!open) setHighlightedIndex(0);
 						}}
@@ -264,7 +275,7 @@ export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }
 							<option value="D">D</option>
 							<option value="E">E</option>
 							<option value="F">F</option>
-							<option value="W">W</option>
+							<option value="P">P</option>
 						</select>
 					</div>
 					{open && (

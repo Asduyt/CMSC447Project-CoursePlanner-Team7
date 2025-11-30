@@ -236,9 +236,21 @@ export default function TransferBox({ onDelete, onCreditsChange, onCourseChange,
 
   const universities = ["UMBC", "Towson University", "Johns Hopkins University", "UMD - College Park", "Community College", "Other"];
 
-  // compute credits
+  // compute credits (only count rows that meet a minimum passing threshold C or that are Pass 'P')
   const creditTotal = useMemo(() => {
-    return rows.reduce((sum, r) => sum + (parseFloat(r.credits) || 0), 0);
+    const order = ['A','B','C','D','E','F'];
+    const meets = (grade?: string | null) => {
+      if (!grade) return true; // no grade -> count by default
+      const g = String(grade).toUpperCase();
+      if (g === 'W') return false;
+      // treat 'P' as equivalent to 'C' so Pass counts for credit totals but not for B-only rules
+      const gradeChar = g === 'P' ? 'C' : g[0];
+      const gi = order.indexOf(gradeChar);
+      const mi = order.indexOf('C');
+      if (gi === -1 || mi === -1) return false;
+      return gi <= mi;
+    };
+    return rows.reduce((sum, r) => (meets(r.grade) ? sum + (parseFloat(r.credits) || 0) : sum), 0);
   }, [rows]);
   // report the credits to parent whenever the total changes since when they add it, we need to keep track
   useEffect(() => {
@@ -394,7 +406,7 @@ export default function TransferBox({ onDelete, onCreditsChange, onCourseChange,
                   <option value="D">D</option>
                   <option value="E">E</option>
                   <option value="F">F</option>
-                  <option value="W">W</option>
+                  <option value="P">P</option>
                 </select>
 
                 <button

@@ -14,10 +14,10 @@ type YearProps = {
   onWinterCreditsChange?: (n: number) => void;
   onSummerCreditsChange?: (n: number) => void;
   presets?: {
-    fall?: string[];
-    winter?: string[];
-    spring?: string[];
-    summer?: string[];
+    fall?: { code: string; grade?: string | null }[];
+    winter?: { code: string; grade?: string | null }[];
+    spring?: { code: string; grade?: string | null }[];
+    summer?: { code: string; grade?: string | null }[];
   };
   onCourseChange?: (prevCode: string | null, nextCode: string | null) => void;
   onSemesterSnapshot?: (year: number, season: string, courses: { code: string; name: string; credits: number; grade?: string | null }[]) => void;

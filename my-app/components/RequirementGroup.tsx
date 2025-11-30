@@ -1,5 +1,6 @@
 "use client";
-
+// One requirement group (like Science, Arts and Humanities, etc.)
+// Shows progress and lets you expand to see courses.
 import { useState } from "react";
 import RequirementCell from "./RequirementCell";
 
@@ -19,6 +20,7 @@ export default function RequirementGroup({
   sameSubject,
   creditCap,
   extraCreditsForThisGroup,
+  getCountFor,
 }: {
   title: string;
   courses: Course[];
@@ -29,45 +31,50 @@ export default function RequirementGroup({
   sameSubject?: boolean;
   creditCap?: number;
   extraCreditsForThisGroup?: number;
+  getCountFor?: (code?: string, minGrade?: string, isCreditGroup?: boolean) => number;
 }) {
   const [open, setOpen] = useState(false);
 
-  // normalize a course code to use as a key (remove spaces, uppercase)
+  // turn a course code into a simple key (remove spaces, uppercase)
   const norm = (s: string) => (s || "").replace(/\s+/g, "").toUpperCase();
 
-  // how many times is a given code selected (from counts or set)
-  const getCountFor = (code?: string) => {
+  // how many times was this code picked (duplicates count for electives)
+  const localGetCountFor = (code?: string) => {
     const key = norm(code || "");
     if (!key) return 0;
     const fromCounts = completedCounts?.get(key);
     if (typeof fromCounts === "number") return fromCounts;
     return completedSet?.has(key) ? 1 : 0;
   };
+  const callerGetCountFor = (code?: string, isCreditGroup: boolean = false) => {
+    if (typeof getCountFor === 'function') return getCountFor(code, undefined, isCreditGroup);
+    return localGetCountFor(code);
+  };
 
-  // totals across the whole group
+  // totals for all courses in the group
   let totals_totalCredits = 0;
   let totals_completedCredits = 0;
   let totals_completedCount = 0;
-  for (const c of courses) {
+    for (const c of courses) {
     totals_totalCredits += c.credits ?? 0;
-    if (getCountFor(c.code) > 0) {
+    if (callerGetCountFor(c.code, typeof creditCap === 'number') > 0) {
       totals_completedCredits += c.credits ?? 0;
       totals_completedCount += 1;
     }
   }
   const totals_totalCount = courses.length;
 
-  // build the list of selected courses
+  // build list of selected courses with duplicates expanded
   const selected: Course[] = [];
   for (const c of courses) {
-    const times = getCountFor(c.code);
+    const times = callerGetCountFor(c.code, typeof creditCap === 'number');
     for (let i = 0; i < times; i++) selected.push(c);
   }
 
-  // sum of all selected credits (counting duplicates -> for if we have like CMSC 4XX)
+  // sum of all selected credits (duplicates count)
   let totalSelectedCreditsAll = 0;
   for (const c of courses) {
-    const times = getCountFor(c.code);
+    const times = callerGetCountFor(c.code, typeof creditCap === 'number');
     if (times > 0) totalSelectedCreditsAll += (c.credits ?? 0) * times;
   }
   // add any extra credits that should count for this group (like transfer credits for 120 total)
@@ -76,7 +83,7 @@ export default function RequirementGroup({
     if (extra > 0) totalSelectedCreditsAll += extra;
   }
 
-  // check which selected courses count toward this requirement
+  // figure out which selected courses actually count toward completion
   let visibleSelected: Course[] = [];
   if (typeof creditCap === "number") {
     // include up to the credit cap
@@ -117,13 +124,15 @@ export default function RequirementGroup({
     visibleSelected = selected.slice(0, requiredCount);
   }
 
+  // number of counted courses (limited by requiredCount if present)
   const displayCount = requiredCount ? Math.min(visibleSelected.length, requiredCount) : totals_completedCount;
   const totalNeeded = requiredCount ?? totals_totalCount;
 
+  // credits counted (capped if credit group)
   const displayCompletedCredits = typeof creditCap === "number" ? Math.min(totalSelectedCreditsAll, creditCap) : totals_completedCredits;
   const displayTotalCredits = typeof creditCap === "number" ? creditCap : totals_totalCredits;
 
-  // find percentage that's complete to display
+  // percentage complete for group
   const percentComplete = (() => {
     let numerator = 0;
     let denominator = 0;
@@ -169,26 +178,26 @@ export default function RequirementGroup({
       {open && (
         <div>
           {showList ? (
-            // for normal groups -> if a requiredCount exists and we've reached it, only show the counted/completed courses
+            // for normal groups, if a requiredCount exists and we've reached it, only show the counted/completed courses
             (requiredCount && visibleSelected.length >= requiredCount) ? (
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                 {visibleSelected.map((c, i) => (
-                  <RequirementCell key={`${c.code}-${i}`} course={c} completedSet={completedSet} />
+                  <RequirementCell key={`${c.code}-${i}`} course={c} completed={callerGetCountFor(c.code, typeof creditCap === 'number') > 0} completedSet={completedSet} />
                 ))}
               </ul>
             ) : (
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                 {courses.map((c) => (
-                  <RequirementCell key={c.code} course={c} completedSet={completedSet} />
+                  <RequirementCell key={c.code} course={c} completed={callerGetCountFor(c.code, typeof creditCap === 'number') > 0} completedSet={completedSet} />
                 ))}
               </ul>
             )
           ) : visibleSelected.length > 0 ? (
             // credit-groups in compact mode: when selections exist, render the same so styling matches other groups
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-              {visibleSelected.map((c, i) => (
-                <RequirementCell key={`${c.code}-${i}`} course={c} completedSet={completedSet} />
-              ))}
+                {visibleSelected.map((c, i) => (
+                  <RequirementCell key={`${c.code}-${i}`} course={c} completed={callerGetCountFor(c.code, typeof creditCap === 'number') > 0} completedSet={completedSet} />
+                ))}
             </ul>
           ) : (
             // otherwise show credits only (use capped display values)
