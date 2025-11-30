@@ -181,6 +181,27 @@ export default function Home() {
     return map;
   }, [semesterCounts, transferCounts]);
 
+  // Build a flattened list of selected code + grade combinations
+  const selectedInstances = useMemo(() => {
+    const list: { code: string; grade?: string | null }[] = [];
+    for (const key in semesterSnapshots) {
+      const arr = semesterSnapshots[key] || [];
+      for (const it of arr) {
+        if (!it || !it.code) continue;
+        list.push({ code: it.code, grade: (it as any).grade ?? null });
+      }
+    }
+    // include transfer rows (they live in transferRowsByBox)
+    for (const boxId in transferRowsByBox) {
+      const rows = transferRowsByBox[boxId] || [];
+      for (const r of rows) {
+        if (!r || !r.code) continue;
+        list.push({ code: r.code, grade: (r as any).grade ?? null });
+      }
+    }
+    return list;
+  }, [semesterSnapshots, transferRowsByBox]);
+
   const handleCourseChange = (prevCode: string | null, nextCode: string | null) => {
     setSemesterCounts((prev) => {
       const map = new Map(prev);
@@ -613,7 +634,7 @@ export default function Home() {
     // leave the 'Type' header blank here so the requirements section doesn't show a type label
     rows.push(["", "", "", "REQUIREMENT NAME", "PROGRESS", "", "COMPLETED", "COUNTED COURSES"]);
     // include unmatched transfer credits when computing requirement summaries
-    const reqSummary = computeRequirementsSummary(combinedCounts, unmatchedTransferCredits);
+    const reqSummary = computeRequirementsSummary(combinedCounts, unmatchedTransferCredits, selectedInstances);
     for (const r of reqSummary) {
       const progress = r.type === 'credit' ? `${r.completed}/${r.total} cr (${r.percent}%)` : `${r.completed}/${r.total} (${r.percent}%)`;
       const counted = r.countedCourseCodes.join('; ');
@@ -703,7 +724,7 @@ export default function Home() {
     }
     if (y>260){ doc.addPage(); y=10; }
     doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.text('Requirements',10,y); y+=6; doc.setFontSize(10); doc.setFont('helvetica','normal');
-    const reqSummary = computeRequirementsSummary(combinedCounts, unmatchedTransferCredits);
+    const reqSummary = computeRequirementsSummary(combinedCounts, unmatchedTransferCredits, selectedInstances);
     for (const r of reqSummary) {
       const progress = r.type === 'credit' ? `${r.completed}/${r.total} cr (${r.percent}%)` : `${r.completed}/${r.total} (${r.percent}%)`;
       doc.setFont('helvetica','bold');
@@ -946,7 +967,7 @@ export default function Home() {
             <div style={{ fontWeight: 600 }}>Total credits overall: {total}</div>
           </div>
           </div>
-          <RequirementsSidebar completedSet={new Set(combinedCounts.keys())} completedCounts={combinedCounts} extraCredits={unmatchedTransferCredits} />
+          <RequirementsSidebar completedSet={new Set(combinedCounts.keys())} completedCounts={combinedCounts} extraCredits={unmatchedTransferCredits} semesterSnapshots={semesterSnapshots} transferRowsByBox={transferRowsByBox} />
         </div>
       </main>
       

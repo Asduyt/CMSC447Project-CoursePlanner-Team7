@@ -2,7 +2,7 @@
 import courses from "@/data/courses.json";
 import RequirementGroup from "./RequirementGroup";
 
-export default function RequirementsSidebar({ completedSet, completedCounts, extraCredits }: { completedSet?: Set<string>; completedCounts?: Map<string, number>; extraCredits?: number }) {
+export default function RequirementsSidebar({ completedSet, completedCounts, extraCredits, semesterSnapshots, transferRowsByBox }: { completedSet?: Set<string>; completedCounts?: Map<string, number>; extraCredits?: number; semesterSnapshots?: Record<string, { code: string; name: string; credits: number; grade?: string | null }[]>; transferRowsByBox?: Record<number, { code: string; credits: number; transferFrom?: string; grade?: string }[]> }) {
   // build a mapping from requirement name -> courses that satisfy it
   const reqMap: Record<string, any[]> = {};
   courses.forEach((c: any) => {
@@ -42,9 +42,59 @@ export default function RequirementsSidebar({ completedSet, completedCounts, ext
   };
 
   // helper to get count of completions for a given course code
-  const getCountFor = (code?: string) => {
+  // build a map of code -> array of grade strings (from semester snapshots + transfers)
+  const gradesByCode: Record<string, string[]> = {};
+  if (semesterSnapshots) {
+    for (const k in semesterSnapshots) {
+      const list = semesterSnapshots[k] || [];
+      for (const it of list) {
+        if (!it || !it.code) continue;
+        const key = norm(it.code);
+        if (!gradesByCode[key]) gradesByCode[key] = [];
+        // include empty string for missing grades so we can count ungraded selections
+        gradesByCode[key].push((it.grade ?? "").toString());
+      }
+    }
+  }
+  if (transferRowsByBox) {
+    for (const boxId in transferRowsByBox) {
+      const list = transferRowsByBox[boxId] || [];
+      for (const r of list) {
+        if (!r || !r.code) continue;
+        const key = norm(r.code);
+        if (!gradesByCode[key]) gradesByCode[key] = [];
+        gradesByCode[key].push(((r as any).grade ?? "").toString());
+      }
+    }
+  }
+
+  const gradeMeets = (grade: string | null | undefined, minGrade: string | undefined) => {
+    if (!grade) return true; // if grade not provided, it should count
+    const g = String(grade || '').toUpperCase();
+    if (g === 'W') return false; // withdrawal remains a non-counting value
+    if (g === 'P') return true; // pass counts regardless of letter minimum
+    const order = ['A','B','C','D','E','F'];
+    const gi = order.indexOf(g[0]);
+    const mi = order.indexOf(((minGrade || 'C') + '')[0]);
+    if (gi === -1 || mi === -1) return false;
+    return gi <= mi; // lower index means higher grade
+  };
+
+  const getCountFor = (code?: string, minGrade?: string, isCreditGroup: boolean = false) => {
     const key = norm(code || "");
     if (!key) return 0;
+    // if we have grade instances for this code, count those that either have no grade or meet minGrade
+    const list = gradesByCode[key] || [];
+    if (list.length > 0) {
+      // Special per-course overrides: require B or higher for CMSC201 and CMSC202
+      const specialB = new Set(["CMSC201", "CMSC202"]);
+      const effectiveMin = (specialB.has(key) && !isCreditGroup) ? 'B' : (minGrade || 'C');
+      let c = 0;
+      for (const g of list) {
+        if (gradeMeets(g, effectiveMin)) c++;
+      }
+      return c;
+    }
     const fromCounts = completedCounts?.get(key);
     if (typeof fromCounts === "number") return fromCounts;
     return completedSet?.has(key) ? 1 : 0;
@@ -79,7 +129,7 @@ export default function RequirementsSidebar({ completedSet, completedCounts, ext
       if (typeof cfg.creditCap === "number") {
         let sum = 0;
         for (const c of list) {
-          const count = getCountFor(c.code);
+          const count = getCountFor(c.code, 'C', true);
           if (count > 0) sum += (c.credits ?? 0) * count;
         }
         // add extra transfer credits only for the 120 Academic Credits group
@@ -95,7 +145,7 @@ export default function RequirementsSidebar({ completedSet, completedCounts, ext
         // count selections for this group (with duplicates)
         const selected: Array<{ code: string; credits?: number }> = [];
         for (const c of list) {
-          const count = getCountFor(c.code);
+          const count = getCountFor(c.code, 'C');
           for (let i = 0; i < count; i++) selected.push(c);
         }
 
@@ -170,6 +220,7 @@ export default function RequirementsSidebar({ completedSet, completedCounts, ext
               sameSubject={cfg.sameSubject}
               creditCap={cfg.creditCap}
               extraCreditsForThisGroup={is120 ? (extraCredits ?? 0) : 0}
+              getCountFor={getCountFor}
             />
           </div>
         );

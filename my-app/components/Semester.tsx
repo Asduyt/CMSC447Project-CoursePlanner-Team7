@@ -14,7 +14,7 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 	const [credits, setCredits] = useState<Record<number, number | null>>({ 0: null, 1: null, 2: null, 3: null });
 	// track selected course code per cell
 	const [codes, setCodes] = useState<Record<number, string | null>>({ 0: null, 1: null, 2: null, 3: null });
-	// track grade per cell (A,B,C,D,E,F,W or null)
+	// track grade per cell (A,B,C,D,E,F,P or null)
 	const [grades, setGrades] = useState<Record<number, string | null>>({ 0: null, 1: null, 2: null, 3: null });
 	
 	// prevents the bug where deleting a cell causes another cell to get a preset
@@ -26,11 +26,26 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 	const getNextId = (list: number[]) => (list.length === 0 ? 0 : list[list.length - 1] + 1);
 
 	// helper to compute total credits from a list of cell ids
+	// Only count credits for courses that meet a minimum grade (C) or are Pass (P).
 	const computeTotal = (ids: number[], creditMap: Record<number, number | null>) => {
+		const gradeMeets = (grade: string | null | undefined, minGrade: string = 'C') => {
+			if (!grade) return true; // no grade -> count (user expectation)
+			const g = String(grade || '').toUpperCase();
+			if (g === 'W') return false; // withdrawal does not count
+			if (g === 'P') return true; // pass counts regardless of min letter
+			const order = ['A','B','C','D','E','F'];
+			const gi = order.indexOf(g[0]);
+			const mi = order.indexOf(minGrade[0]);
+			if (gi === -1 || mi === -1) return false;
+			return gi <= mi;
+		};
+
 		let sum = 0;
 		for (let i = 0; i < ids.length; i++) {
 			const id = ids[i];
-			sum += creditMap[id] ?? 0;
+			const cr = creditMap[id] ?? 0;
+			const g = grades[id];
+			if (gradeMeets(g, 'C')) sum += cr;
 		}
 		return sum;
 	};

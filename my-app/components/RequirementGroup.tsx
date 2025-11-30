@@ -20,6 +20,7 @@ export default function RequirementGroup({
   sameSubject,
   creditCap,
   extraCreditsForThisGroup,
+  getCountFor,
 }: {
   title: string;
   courses: Course[];
@@ -30,6 +31,7 @@ export default function RequirementGroup({
   sameSubject?: boolean;
   creditCap?: number;
   extraCreditsForThisGroup?: number;
+  getCountFor?: (code?: string, minGrade?: string) => number;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -37,21 +39,25 @@ export default function RequirementGroup({
   const norm = (s: string) => (s || "").replace(/\s+/g, "").toUpperCase();
 
   // how many times was this code picked (duplicates count for electives)
-  const getCountFor = (code?: string) => {
+  const localGetCountFor = (code?: string) => {
     const key = norm(code || "");
     if (!key) return 0;
     const fromCounts = completedCounts?.get(key);
     if (typeof fromCounts === "number") return fromCounts;
     return completedSet?.has(key) ? 1 : 0;
   };
+  const callerGetCountFor = (code?: string, isCreditGroup: boolean = false) => {
+    if (typeof getCountFor === 'function') return getCountFor(code, undefined, isCreditGroup);
+    return localGetCountFor(code);
+  };
 
   // totals for all courses in the group
   let totals_totalCredits = 0;
   let totals_completedCredits = 0;
   let totals_completedCount = 0;
-  for (const c of courses) {
+    for (const c of courses) {
     totals_totalCredits += c.credits ?? 0;
-    if (getCountFor(c.code) > 0) {
+    if (callerGetCountFor(c.code, typeof creditCap === 'number') > 0) {
       totals_completedCredits += c.credits ?? 0;
       totals_completedCount += 1;
     }
@@ -61,14 +67,14 @@ export default function RequirementGroup({
   // build list of selected courses with duplicates expanded
   const selected: Course[] = [];
   for (const c of courses) {
-    const times = getCountFor(c.code);
+    const times = callerGetCountFor(c.code, typeof creditCap === 'number');
     for (let i = 0; i < times; i++) selected.push(c);
   }
 
   // sum of all selected credits (duplicates count)
   let totalSelectedCreditsAll = 0;
   for (const c of courses) {
-    const times = getCountFor(c.code);
+    const times = callerGetCountFor(c.code, typeof creditCap === 'number');
     if (times > 0) totalSelectedCreditsAll += (c.credits ?? 0) * times;
   }
   // add any extra credits that should count for this group (like transfer credits for 120 total)
@@ -176,22 +182,22 @@ export default function RequirementGroup({
             (requiredCount && visibleSelected.length >= requiredCount) ? (
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                 {visibleSelected.map((c, i) => (
-                  <RequirementCell key={`${c.code}-${i}`} course={c} completedSet={completedSet} />
+                  <RequirementCell key={`${c.code}-${i}`} course={c} completed={callerGetCountFor(c.code, typeof creditCap === 'number') > 0} completedSet={completedSet} />
                 ))}
               </ul>
             ) : (
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
                 {courses.map((c) => (
-                  <RequirementCell key={c.code} course={c} completedSet={completedSet} />
+                  <RequirementCell key={c.code} course={c} completed={callerGetCountFor(c.code, typeof creditCap === 'number') > 0} completedSet={completedSet} />
                 ))}
               </ul>
             )
           ) : visibleSelected.length > 0 ? (
             // credit-groups in compact mode: when selections exist, render the same so styling matches other groups
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-              {visibleSelected.map((c, i) => (
-                <RequirementCell key={`${c.code}-${i}`} course={c} completedSet={completedSet} />
-              ))}
+                {visibleSelected.map((c, i) => (
+                  <RequirementCell key={`${c.code}-${i}`} course={c} completed={callerGetCountFor(c.code, typeof creditCap === 'number') > 0} completedSet={completedSet} />
+                ))}
             </ul>
           ) : (
             // otherwise show credits only (use capped display values)

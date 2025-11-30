@@ -13,7 +13,7 @@ export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }
 	const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 	const [selected, setSelected] = useState<{ code: string; name: string; credits: number } | null>(null);
 
-	// grade state for this cell (A,B,C,D,E,F,W or null)
+	// grade state for this cell (A,B,C,D,E,F,P or null)
 	const [grade, setGrade] = useState<string | null>(null);
 
 	// simple named handler for grade changes to keep code easy to follow
@@ -132,6 +132,11 @@ export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }
 							}
 						}}
 						onClick={() => {
+							// if there is a currently selected course, highlight the input contents
+							if (selected && inputRef.current) {
+								inputRef.current.select();
+							}
+							// still toggle the dropdown as before
 							setOpen((prev) => !prev);
 							if (!open) setHighlightedIndex(0);
 						}}
@@ -264,7 +269,7 @@ export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }
 							<option value="D">D</option>
 							<option value="E">E</option>
 							<option value="F">F</option>
-							<option value="W">W</option>
+							<option value="P">P</option>
 						</select>
 					</div>
 					{open && (

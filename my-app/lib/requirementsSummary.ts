@@ -41,14 +41,31 @@ function normalizeCode(s: string | undefined): string {
 // Main function. Input: map of selected course code -> times selected.
 // `extraCredits` allows callers to include transfer credits that do not map to
 // any catalog course (these still count toward the 120-credit requirement).
-export function computeRequirementsSummary(selectedCounts: Map<string, number>, extraCredits: number = 0): RequirementSummary[] {
-  // Make a normalized copy of selectedCounts for easy lookup.
+// selectedInstances: optional list of selected course instances (may include grade)
+// groupMinGrades: Map of requirement group -> minGrade (e.g. 'C')
+export function computeRequirementsSummary(
+  selectedCounts: Map<string, number>,
+  extraCredits: number = 0,
+  selectedInstances?: { code: string; grade?: string | null }[],
+  groupMinGrades?: Record<string, string>
+): RequirementSummary[] {
+  // If caller provided selectedInstances (detailed selections with grades),
+  // we'll prefer that for grade-aware counting. Otherwise fall back to selectedCounts.
   const normalizedSelected = new Map<string, number>();
-  for (const entry of selectedCounts.entries()) {
-    const rawCode = entry[0];
-    const count = entry[1] ?? 0;
-    const key = normalizeCode(rawCode);
-    normalizedSelected.set(key, count);
+  if (!selectedInstances || selectedInstances.length === 0) {
+    for (const entry of selectedCounts.entries()) {
+      const rawCode = entry[0];
+      const count = entry[1] ?? 0;
+      const key = normalizeCode(rawCode);
+      normalizedSelected.set(key, count);
+    }
+  } else {
+    // Build a normalized map of code -> times selected (ignoring grades here)
+    for (const inst of selectedInstances) {
+      const key = normalizeCode(inst.code);
+      if (!key) continue;
+      normalizedSelected.set(key, (normalizedSelected.get(key) ?? 0) + 1);
+    }
   }
 
   // Build a map from requirement name -> list of course objects.
@@ -95,13 +112,62 @@ export function computeRequirementsSummary(selectedCounts: Map<string, number>, 
     const cfg = getGroupConfig(groupName);
 
     // Build a list of selected course objects, repeating a course if it was selected multiple times.
-    const expandedSelected: { code: string; credits?: number }[] = [];
-    for (let ci = 0; ci < courses.length; ci++) {
-      const course = courses[ci];
-      const code = course.code || "";
-      const times = normalizedSelected.get(normalizeCode(code)) || 0;
-      for (let t = 0; t < times; t++) {
-        expandedSelected.push(course);
+    // If detailed selectedInstances were provided, use them and apply per-group minGrade filtering.
+    const expandedSelected: { code: string; credits?: number; grade?: string | null }[] = [];
+    if (selectedInstances && selectedInstances.length > 0) {
+      // Build lookup of available instances by normalized code
+      const byCode: Record<string, { code: string; grade?: string | null }[]> = {};
+      for (const inst of selectedInstances) {
+        const key = normalizeCode(inst.code);
+        if (!byCode[key]) byCode[key] = [];
+        byCode[key].push({ code: inst.code, grade: inst.grade ?? null });
+      }
+
+      for (let ci = 0; ci < courses.length; ci++) {
+        const course = courses[ci];
+        const key = normalizeCode(course.code);
+        const instances = byCode[key] || [];
+          // determine minGrade for this group (default to 'C')
+          let minGrade = (groupMinGrades && groupMinGrades[groupName]) || 'C';
+          // Special per-course overrides: require B or higher for CMSC201 and CMSC202
+          // Only enforce the stricter per-course override for non-credit requirement groups
+          const codeKey = normalizeCode(course.code);
+          const isCreditGroup = typeof cfg.creditCap === 'number';
+          if (!isCreditGroup && (codeKey === 'CMSC201' || codeKey === 'CMSC202')) minGrade = 'B';
+          // Take up to instances.length entries, include ungraded instances (do not block) or
+          // include graded instances only if they meet minGrade. Treat 'W' as failing.
+          for (let i = 0; i < instances.length; i++) {
+            const inst = instances[i];
+            const instGrade = inst.grade ?? '';
+            if (!instGrade) {
+              // no grade provided -> count this instance
+              expandedSelected.push({ code: inst.code, credits: course.credits, grade: inst.grade });
+              continue;
+            }
+            const g = String(instGrade).toUpperCase();
+            if (g === 'W') continue;
+            if (g === 'P') {
+              // Pass: count regardless of the letter-grade minimum
+              expandedSelected.push({ code: inst.code, credits: course.credits, grade: inst.grade });
+              continue;
+            }
+            // grade order A > B > C > D > E > F
+            const order = ['A', 'B', 'C', 'D', 'E', 'F'];
+            const gi = order.indexOf(g[0]);
+            const mi = order.indexOf((minGrade || 'C')[0]);
+            if (gi >= 0 && mi >= 0 && gi <= mi) {
+              expandedSelected.push({ code: inst.code, credits: course.credits, grade: inst.grade });
+            }
+          }
+      }
+    } else {
+      for (let ci = 0; ci < courses.length; ci++) {
+        const course = courses[ci];
+        const code = course.code || "";
+        const times = normalizedSelected.get(normalizeCode(code)) || 0;
+        for (let t = 0; t < times; t++) {
+          expandedSelected.push(course);
+        }
       }
     }
 
