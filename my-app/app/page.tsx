@@ -35,11 +35,12 @@ type ImportedTransfer = {
 };
 
 // type for year presets (fall, spring, winter, summer)
+// each entry now includes an optional `grade` so imports can prefill grades
 type YearPresets = {
-  fall: string[];
-  spring: string[];
-  winter: string[];
-  summer: string[];
+  fall: { code: string; grade?: string | null }[];
+  spring: { code: string; grade?: string | null }[];
+  winter: { code: string; grade?: string | null }[];
+  summer: { code: string; grade?: string | null }[];
 };
 
 export default function Home() {
@@ -272,25 +273,25 @@ export default function Home() {
     // then return hardcoded pathways presets
     if (year === 1) {
       return {
-        fall: ["CMSC201", "MATH151", "LANG201", "ENGL GEP"],
-        spring: ["CMSC202", "MATH152", "CMSC203", "AH GEP", "SS GEP"],
+        fall: ["CMSC201", "MATH151", "LANG201", "ENGL GEP"].map(c => ({ code: c })),
+        spring: ["CMSC202", "MATH152", "CMSC203", "AH GEP", "SS GEP"].map(c => ({ code: c })),
       };
     }
     if (year === 2) {
       return {
-        fall: ["CMSC331", "CMSC341", "SCI SEQ I", "SS GEP", "ELECTIVE"],
-        spring: ["CMSC313", "MATH221", "SCI SEQ II", "SCI LAB GEP", "SS GEP"],
+        fall: ["CMSC331", "CMSC341", "SCI SEQ I", "SS GEP", "ELECTIVE"].map(c => ({ code: c })),
+        spring: ["CMSC313", "MATH221", "SCI SEQ II", "SCI LAB GEP", "SS GEP"].map(c => ({ code: c })),
       };
     }
     if (year === 3) {
       return {
-        fall: ["CMSC304", "CMSC411", "CMSC4XX - TEC", "STAT355"],
-        spring: ["CMSC421", "CMSC4XX - CS", "CMSC4XX - TEC", "AH GEP", "C GEP"],
+        fall: ["CMSC304", "CMSC411", "CMSC4XX - TEC", "STAT355"].map(c => ({ code: c })),
+        spring: ["CMSC421", "CMSC4XX - CS", "CMSC4XX - TEC", "AH GEP", "C GEP"].map(c => ({ code: c })),
       };
     }
     return {
-      fall: ["CMSC441", "CMSC447", "UL ELECT", "ELECTIVE", "ELECTIVE"],
-      spring: ["CMSC4XX - CS", "CMSC4XX - TEC", "ELECTIVE", "ELECTIVE", "ELECTIVE"],
+      fall: ["CMSC441", "CMSC447", "UL ELECT", "ELECTIVE", "ELECTIVE"].map(c => ({ code: c })),
+      spring: ["CMSC4XX - CS", "CMSC4XX - TEC", "ELECTIVE", "ELECTIVE", "ELECTIVE"].map(c => ({ code: c })),
     };
   };
 
@@ -533,15 +534,16 @@ export default function Home() {
         continue;
       }
       
-      // add the course code to the appropriate semester
+      // add the course code + optional grade to the appropriate semester
+      const entry = { code: course.code, grade: course.grade === "" ? null : course.grade };
       if (semester === "fall") {
-        organized[year].fall.push(course.code);
+        organized[year].fall.push(entry);
       } else if (semester === "spring") {
-        organized[year].spring.push(course.code);
+        organized[year].spring.push(entry);
       } else if (semester === "winter") {
-        organized[year].winter.push(course.code);
+        organized[year].winter.push(entry);
       } else if (semester === "summer") {
-        organized[year].summer.push(course.code);
+        organized[year].summer.push(entry);
       }
     }
     

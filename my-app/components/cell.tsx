@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import courses from "@/data/courses.json";
 
 // This component renders a text input paired with a datalist to provide a dropdown of suggestions.
-export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void; onGradeChange?: (grade: string | null) => void; presetCourse?: { code: string; name: string; credits: number } | null }) {
+export default function Cell({ onDelete, onChange, onGradeChange, presetCourse, presetGrade }: { onDelete?: () => void; onChange?: (course: { code: string; name: string; credits: number } | null) => void; onGradeChange?: (grade: string | null) => void; presetCourse?: { code: string; name: string; credits: number } | null; presetGrade?: string | null }) {
 	const [value, setValue] = useState("");
 	const [open, setOpen] = useState(false);
 	const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -78,6 +78,12 @@ export default function Cell({ onDelete, onChange, onGradeChange, presetCourse }
 			const composed = `${presetCourse.code} ${presetCourse.name}`;
 			setValue(composed);
 			setSelected(presetCourse);
+			// if an initial grade came with the preset, apply it and notify parent
+			if (presetGrade !== undefined) {
+				const g = presetGrade === "" ? null : presetGrade;
+				setGrade(g);
+				if (onGradeChange) onGradeChange(g);
+			}
 			onChange?.(presetCourse);
 		}, [presetCourse?.code, presetCourse?.name, presetCourse?.credits]);
 
