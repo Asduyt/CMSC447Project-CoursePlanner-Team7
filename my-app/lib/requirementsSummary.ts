@@ -146,14 +146,12 @@ export function computeRequirementsSummary(
             }
             const g = String(instGrade).toUpperCase();
             if (g === 'W') continue;
-            if (g === 'P') {
-              // Pass: count regardless of the letter-grade minimum
-              expandedSelected.push({ code: inst.code, credits: course.credits, grade: inst.grade });
-              continue;
-            }
+            // Treat 'P' as equivalent to 'C' for comparisons so 'P' will satisfy C-level mins
+            // but will not satisfy stricter B-only minimums.
+            const gradeChar = g === 'P' ? 'C' : g[0];
             // grade order A > B > C > D > E > F
             const order = ['A', 'B', 'C', 'D', 'E', 'F'];
-            const gi = order.indexOf(g[0]);
+            const gi = order.indexOf(gradeChar);
             const mi = order.indexOf((minGrade || 'C')[0]);
             if (gi >= 0 && mi >= 0 && gi <= mi) {
               expandedSelected.push({ code: inst.code, credits: course.credits, grade: inst.grade });

@@ -72,9 +72,11 @@ export default function RequirementsSidebar({ completedSet, completedCounts, ext
     if (!grade) return true; // if grade not provided, it should count
     const g = String(grade || '').toUpperCase();
     if (g === 'W') return false; // withdrawal remains a non-counting value
-    if (g === 'P') return true; // pass counts regardless of letter minimum
+    // Treat Pass ('P') as equivalent to a 'C' for letter comparisons.
+    // This means a 'P' will satisfy minimum C (or lower) but NOT a minimum B.
+    const gradeChar = g === 'P' ? 'C' : g[0];
     const order = ['A','B','C','D','E','F'];
-    const gi = order.indexOf(g[0]);
+    const gi = order.indexOf(gradeChar);
     const mi = order.indexOf(((minGrade || 'C') + '')[0]);
     if (gi === -1 || mi === -1) return false;
     return gi <= mi; // lower index means higher grade

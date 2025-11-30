@@ -32,9 +32,10 @@ export default function Semester({ season, year, onCreditsChange, onDelete, onCo
 			if (!grade) return true; // no grade -> count (user expectation)
 			const g = String(grade || '').toUpperCase();
 			if (g === 'W') return false; // withdrawal does not count
-			if (g === 'P') return true; // pass counts regardless of min letter
+			// Treat Pass ('P') as equivalent to a 'C' for comparisons so P counts for C-level checks
+			const gradeChar = g === 'P' ? 'C' : g[0];
 			const order = ['A','B','C','D','E','F'];
-			const gi = order.indexOf(g[0]);
+			const gi = order.indexOf(gradeChar);
 			const mi = order.indexOf(minGrade[0]);
 			if (gi === -1 || mi === -1) return false;
 			return gi <= mi;

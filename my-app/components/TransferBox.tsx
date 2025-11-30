@@ -243,8 +243,9 @@ export default function TransferBox({ onDelete, onCreditsChange, onCourseChange,
       if (!grade) return true; // no grade -> count by default
       const g = String(grade).toUpperCase();
       if (g === 'W') return false;
-      if (g === 'P') return true;
-      const gi = order.indexOf(g[0]);
+      // treat 'P' as equivalent to 'C' so Pass counts for credit totals but not for B-only rules
+      const gradeChar = g === 'P' ? 'C' : g[0];
+      const gi = order.indexOf(gradeChar);
       const mi = order.indexOf('C');
       if (gi === -1 || mi === -1) return false;
       return gi <= mi;
