@@ -145,6 +145,35 @@ export default function Home() {
       else if (year === 3) setY3Summer(0);
       else if (year === 4) setY4Summer(0);
     }
+
+    // Remove any snapshot data for this semester so requirements/counts update.
+    const snapshotKey = `${year}:${type}`;
+    setSemesterSnapshots((prev) => {
+      const copy = { ...prev };
+      const removed = copy[snapshotKey] || [];
+      // delete the snapshot entry
+      delete copy[snapshotKey];
+
+      if (removed.length > 0) {
+        // decrement semesterCounts for any codes that were present in the removed semester
+        setSemesterCounts((countsPrev) => {
+          const map = new Map(countsPrev);
+          const norm = (s: string) => (s || "").replace(/\s+/g, "").toUpperCase();
+          for (const it of removed) {
+            if (!it || !it.code) continue;
+            const k = norm(it.code);
+            const cur = map.get(k) ?? 0;
+            const next = cur - 1;
+            if (next <= 0) map.delete(k); else map.set(k, next);
+          }
+          return map;
+        });
+      }
+
+      return copy;
+    });
+
+    // no full remount needed; state updates above will re-render appropriately
   };
   
   // track credits for each semester to help us show it
