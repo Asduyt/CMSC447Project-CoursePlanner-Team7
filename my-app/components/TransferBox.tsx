@@ -334,9 +334,13 @@ export default function TransferBox({ onDelete, onCreditsChange, onCourseChange,
     // best way that could be done...
   setRows((prev) => {
       let nextId = (prev.at(-1)?.id ?? -1) + 1;
+      // Use the generic "Community College" option for the transfer target so the
+      // TransferBox select shows a valid selection (the select's options include
+      // a "Community College" choice rather than every MD school name).
+      const transferTarget = "Community College";
       const appended = chosen.map((r) => ({
         id: nextId++,
-        transferTo: schoolName,
+        transferTo: transferTarget,
         course: r.transfersAs,
         credits: r.credits != null ? String(r.credits) : "",
       }));
