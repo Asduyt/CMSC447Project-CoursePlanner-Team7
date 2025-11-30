@@ -31,7 +31,7 @@ export default function RequirementGroup({
   sameSubject?: boolean;
   creditCap?: number;
   extraCreditsForThisGroup?: number;
-  getCountFor?: (code?: string, minGrade?: string) => number;
+  getCountFor?: (code?: string, minGrade?: string, isCreditGroup?: boolean) => number;
 }) {
   const [open, setOpen] = useState(false);
 
